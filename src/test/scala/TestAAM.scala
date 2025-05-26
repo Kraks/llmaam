@@ -10,4 +10,5 @@ class MySuite extends FunSuite {
     val states = analyzer.run(benchmarks.app1)
     println(states.size)
     println(analyzer.order)
+    analyzer.dumpGraph("app1.dot")
 }

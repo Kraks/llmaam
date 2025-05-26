@@ -1,6 +1,6 @@
 package llmaam.aam
 
-import scala.collection.mutable.HashMap
+import scala.collection.mutable.{ListBuffer, HashMap}
 
 import llmaam.syntax.*
 import Expr.*
@@ -94,7 +94,7 @@ abstract class Analyzer:
   def allocBind(x: String, t: Time): BAddr
   def allocKont(e: Expr, t: Time): KAddr
 
-  val order: HashMap[State, Set[State]] = HashMap()
+  val order: ListBuffer[(State, Set[State])] = ListBuffer()
 
   def isAtomic(e: Expr): Boolean = e match
     case Lit(_) | Var(_) | Lam(_, _) => true
@@ -182,9 +182,9 @@ abstract class Analyzer:
       if seen(s) then drive(rest, seen)
       else if isDone(s) then drive(rest, seen + s)
       else {
-        val succ = step(s)
-        order += (s -> succ)
-        drive(succ.toList ++ rest, seen + s)
+        val succs = step(s)
+        order.append(s -> succs)
+        drive(succs.toList ++ rest, seen + s)
       }
 
   def inject(e: Expr): State = EState(e, Map(), Map(), Map(), KHalt(), List())
@@ -192,6 +192,38 @@ abstract class Analyzer:
   def run(e: Expr): Set[State] =
     val initial = inject(e)
     drive(List(initial), Set())
+
+  def dumpGraph(filename: String): Unit =
+    import java.io.{File, PrintWriter}
+    val file = new File(filename)
+    val writer = new PrintWriter(file)
+    var counter = 0
+    val numbering = HashMap[State, Int]()
+    def add(s: State): Unit =
+      if !numbering.contains(s) then
+        numbering(s) = counter
+        counter += 1
+    writer.println("digraph G {")
+    // print all transitions
+    for ((s, succs) <- order) {
+      add(s)
+      for (s2 <- succs) {
+        add(s2)
+        writer.println(s"""  ${numbering(s)} -> ${numbering(s2)};""")
+      }
+    }
+    // print node labels
+    for ((s, n) <- numbering) {
+      s match
+        case EState(e, ρ, σᵥ, σₖ, k, t) =>
+          writer.println(s"""  ${n} [label="${n}|EState(${e})"];""")
+        case VState(v, ρ, σᵥ, σₖ, k, t) =>
+          writer.println(s"""  ${n} [label="${n}|VState(${v})"];""")
+        case ErrState() =>
+          writer.println(s"""  ${n} [label="${n}|ErrState()"];""")
+    }
+    writer.println("}")
+    writer.close()
 
 class Analyzer0CFA extends Analyzer:
   def tick(t: State): Time = List()
