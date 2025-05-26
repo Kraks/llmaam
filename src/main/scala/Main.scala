@@ -1,5 +1,17 @@
-@main def hello(): Unit =
-  println("Hello world!")
-  println(msg)
+package llmaam
 
-def msg = "I was compiled by Scala 3. :)"
+import dev.langchain4j.model.googleai.*
+import dev.langchain4j.model.openai.*
+
+import scala.io.Source
+
+@main def hello(): Unit =
+  val geminiAPI = Source.fromFile("GEMINI_AI_KEY").getLines().next()
+
+  val gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(geminiAPI)
+    .modelName("gemini-2.0-flash")
+    .build()
+
+  val answer = gemini.chat("Say 'Hello World for Scala 3!'")
+  println(answer)
