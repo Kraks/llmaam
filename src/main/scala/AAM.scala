@@ -1,7 +1,8 @@
 package llmaam.aam
 
-import llmaam.syntax.*
+import scala.collection.mutable.HashMap
 
+import llmaam.syntax.*
 import Expr.*
 
 // Frames and continuations
@@ -93,6 +94,8 @@ abstract class Analyzer:
   def allocBind(x: String, t: Time): BAddr
   def allocKont(e: Expr, t: Time): KAddr
 
+  val order: HashMap[State, Set[State]] = HashMap()
+
   def isAtomic(e: Expr): Boolean = e match
     case Lit(_) | Var(_) | Lam(_, _) => true
     case UnaryOp(_, _) | BinOp(_, _, _)
@@ -178,7 +181,11 @@ abstract class Analyzer:
       val s::rest = todo
       if seen(s) then drive(rest, seen)
       else if isDone(s) then drive(rest, seen + s)
-      else drive(step(s).toList ++ rest, seen + s)
+      else {
+        val succ = step(s)
+        order += (s -> succ)
+        drive(succ.toList ++ rest, seen + s)
+      }
 
   def inject(e: Expr): State = EState(e, Map(), Map(), Map(), KHalt(), List())
 

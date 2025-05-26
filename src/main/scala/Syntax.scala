@@ -11,3 +11,7 @@ enum Expr:
   case App(f: Expr, arg: Expr)
   case Let(x: String, rhs: Expr, body: Expr)
   case Letrec(x: String, rhs: Expr, body: Expr)
+
+// TODO: loop
+// TODO: mutable states
+// TODO: call/cc

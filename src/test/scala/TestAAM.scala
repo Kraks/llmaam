@@ -9,5 +9,5 @@ class MySuite extends FunSuite {
     val analyzer = new Analyzer0CFA
     val states = analyzer.run(benchmarks.app1)
     println(states.size)
-
+    println(analyzer.order)
 }
