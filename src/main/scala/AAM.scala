@@ -162,7 +162,10 @@ abstract class Analyzer:
 
   def dumpGraph(filename: String): Unit =
     import java.io.{File, PrintWriter}
+    import java.nio.file.{Files, Paths, Path}
     import scala.sys.process._
+    val path = Paths.get("result")
+    if (!Files.exists(path)) Files.createDirectories(path)
     val file = new File("result/" + filename)
     val writer = new PrintWriter(file)
     var counter = 0
