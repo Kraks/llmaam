@@ -19,8 +19,8 @@ enum Kont:
 
 // Addresses
 
-case class BAddr(x: String, instrumentation: Time = List())
-case class KAddr(e: Expr, instrumentation: Time = List())
+case class BAddr(x: String, instrumentation: List[Any] = List())
+case class KAddr(e: Expr, instrumentation: List[Any] = List())
 
 // Environments and stores
 
@@ -32,6 +32,9 @@ type Env = Map[String, BAddr]
 enum Value:
   case Num()
   case Clo(lam: Expr.Lam, ρ: Env)
+  override def toString(): String = this match
+    case Num() => "ℕ"
+    case Clo(lam, ρ) => s"⟨${lam}, ${ρ}⟩"
 
 type BStore = Map[BAddr, Set[Value]]
 type KStore = Map[KAddr, Set[Kont]]
@@ -54,9 +57,13 @@ abstract class Analyzer:
 
   def tick(t: State): Time
   def allocBind(x: String, t: Time): BAddr
-  def allocKont(e: Expr, t: Time): KAddr
+  /* allocKont can access the current state s,
+   * the new control string e1, the new environment ρ1,
+   * the new value store σᵥ1, and the instrumentation (``ticked'' history) t.
+   */
+  def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr
 
-  val order: ListBuffer[(State, (Label, Set[State]))] = ListBuffer()
+  val transitions: ListBuffer[(State, Label, Set[State])] = ListBuffer()
 
   def isAtomic(e: Expr): Boolean = e match
     case Lit(_) | Var(_) | Lam(_, _) => true
@@ -93,12 +100,12 @@ abstract class Analyzer:
         val α = allocBind(x, t)
         val ρ1 = ρ + (x → α)
         val σᵥ1 = σᵥ ⊔ Map(α → Set(v))
-        ("let", for { kont <- σₖ(k) } yield EState(e, ρ1, σᵥ1, σₖ, kont, t))
+        ("let-body", for { kont <- σₖ(k) } yield EState(e, ρ1, σᵥ1, σₖ, kont, t))
       case VState(v, _, σᵥ, σₖ, KLetrec(x, ρ, e, k), t) =>
         val α = allocBind(x, t)
         val ρ1 = ρ + (x → α)
         val σᵥ1 = σᵥ ⊔ Map(α → Set(v))
-        ("letrec", for { kont <- σₖ(k) } yield EState(e, ρ1, σᵥ1, σₖ, kont, t))
+        ("letrec-body", for { kont <- σₖ(k) } yield EState(e, ρ1, σᵥ1, σₖ, kont, t))
 
   def step(s: State): (Label, Set[State]) =
     val t1 = tick(s)
@@ -114,26 +121,26 @@ abstract class Analyzer:
         ("lam", VState(Clo(Lam(x, e), ρ), ρ, σᵥ, σₖ, k, t1))
       // push continuation to KStore
       case EState(e@UnaryOp(op, e1), ρ, σᵥ, σₖ, k, t) =>
-        val α = allocKont(e, t1)
+        val α = allocKont(s, e1, ρ, σᵥ, t1)
         val σₖ1 = σₖ ⊔ Map(α → Set(k))
         ("op1-exp", EState(e, ρ, σᵥ, σₖ1, KUnaryOp(op, ρ, α), t1))
       case EState(e@BinOp(op, e1, e2), ρ, σᵥ, σₖ, k, t) =>
-        val α = allocKont(e, t1)
+        val α = allocKont(s, e1, ρ, σᵥ, t1)
         val σₖ1 = σₖ ⊔ Map(α → Set(k))
         ("op2-lhs", EState(e1, ρ, σᵥ, σₖ1, KBinOpR(op, e2, ρ, α), t1))
       case EState(e@App(f, arg), ρ, σᵥ, σₖ, k, t) =>
-        val α = allocKont(e, t1)
+        val α = allocKont(s, f, ρ, σᵥ, t1)
         val σₖ1 = σₖ ⊔ Map(α → Set(k))
         ("app-lhs", EState(f, ρ, σᵥ, σₖ1, KArg(arg, ρ, α), t1))
       case EState(e@Let(x, rhs, body), ρ, σᵥ, σₖ, k, t) =>
-        val α = allocKont(e, t1)
+        val α = allocKont(s, rhs, ρ, σᵥ, t1)
         val σₖ1 = σₖ ⊔ Map(α → Set(k))
         ("let-rhs", EState(rhs, ρ, σᵥ, σₖ1, KLet(x, ρ, body, α), t1))
       case EState(e@Letrec(x, rhs, body), ρ, σᵥ, σₖ, k, t) =>
         val αb = allocBind(x, t1)
-        val αk = allocKont(e, t1)
         val ρ1 = ρ + (x → αb)
         val σᵥ1 = σᵥ ⊔ Map(αb → Set())
+        val αk = allocKont(s, rhs, ρ1, σᵥ1, t1)
         val σₖ1 = σₖ ⊔ Map(αk → Set(k))
         ("letrec-rhs", EState(rhs, ρ1, σᵥ1, σₖ1, KLetrec(x, ρ, body, αk), t1))
 
@@ -145,7 +152,7 @@ abstract class Analyzer:
       else if isDone(s) then drive(rest, seen + s)
       else {
         val (lab, succs) = step(s)
-        order.append(s -> (lab, succs))
+        transitions.append((s, lab, succs))
         drive(succs.toList ++ rest, seen + s)
       }
 
@@ -167,8 +174,10 @@ abstract class Analyzer:
         numbering(s) = counter
         counter += 1
     writer.println("digraph G {")
+    writer.println("""  node [fontname = "Courier New"];""")
+    writer.println("""  edge [fontname = "helvetica"];""")
     // print all transitions
-    for ((s, (lab, succs)) <- order) {
+    for ((s, lab, succs) <- transitions) {
       add(s)
       for (s2 <- succs) {
         add(s2)
@@ -192,6 +201,23 @@ abstract class Analyzer:
     command.!
 
 class Analyzer0CFA extends Analyzer:
+  // 0CFA analysis has no instrumentation (no context-sensitivity)
   def tick(t: State): Time = List()
   def allocBind(x: String, t: Time): BAddr = BAddr(x, List())
-  def allocKont(e: Expr, t: Time): KAddr = KAddr(e, List())
+  // Using the source/previous expression (that causes the allocation) as the continuation address
+  // (as in Systematic abstraction of abstract machines, JFP 12)
+  def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr =
+    val EState(e, _, _, _, _, _) = s
+    KAddr(e, List())
+
+trait TgtContAlloc:
+  self: Analyzer =>
+  // Using the target expression as the continuation address
+  // (similar to Pushdown Control-Flow Analysis for Free, POPL16).
+  override def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr = KAddr(e1, List())
+
+trait P4FContAlloc:
+  self: Analyzer =>
+  // This implements the P4F continuation allocation strategy (Pushdown Control-Flow Analysis for Free, POPL 16).
+  // XXX: it doesn't work well for direct-style where we don't have ANF restriction
+  override def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr = KAddr(e1, List(ρ1))

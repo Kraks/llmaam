@@ -26,7 +26,11 @@ given MapLattice[K, V: Lattice]: Lattice[Map[K, V]] with
     def ⊑(m2: Map[K, V]): Boolean =
       m1.forall { case (k, v) => v ⊑ m2.getOrElse(k, lv.bot) }
     def ⊔(m2: Map[K, V]): Map[K, V] =
-      m1.foldLeft(m2) { case (m, (k, v)) => m + (k -> v ⊔ m.getOrElse(k, lv.bot)) }
+      m1.foldLeft(m2) { case (m, (k, v)) =>
+        val oldValue = m.getOrElse(k, lv.bot)
+        if (oldValue != Set()) println(s"Precision loss at ${k}:\n  merging ${v}\n      and ${oldValue}")
+        m + (k -> v ⊔ oldValue)
+      }
     def ⊓(m2: Map[K, V]): Map[K, V] =
       m1.keySet.intersect(m2.keySet).foldLeft(Map[K,V]()) {
         case (m, k) => m + (k -> m1(k) ⊓ m2(k))
