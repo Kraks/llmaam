@@ -24,6 +24,9 @@ class TestAAM extends FunSuite {
   test("omega"):
     testAnalyzer(new Analyzer0CFA, benchmarks.omega, "omega")
 
+  test("omega - aac"):
+    testAnalyzer(new Analyzer0CFA with AACContAlloc, benchmarks.omega, "omega_aac")
+
   test("omega2"):
     testAnalyzer(new Analyzer0CFA, benchmarks.omega2, "omega2")
 
@@ -40,6 +43,9 @@ class TestAAM extends FunSuite {
   test("stack - p4f"):
     testAnalyzer(new Analyzer0CFA with P4FContAlloc, benchmarks.stack, "stack_p4f")
 
+  test("stack - aac"):
+    testAnalyzer(new Analyzer0CFA with AACContAlloc, benchmarks.stack, "stack_aac")
+
   // stack2
 
   test("stack2"):
@@ -51,6 +57,9 @@ class TestAAM extends FunSuite {
   test("stack2 - p4f"):
     testAnalyzer(new Analyzer0CFA with P4FContAlloc, benchmarks.stack2, "stack2_p4f")
 
+  test("stack2 - aac"):
+    testAnalyzer(new Analyzer0CFA with AACContAlloc, benchmarks.stack2, "stack2_aac")
+
   // binopid
 
   test("binopid"):
@@ -61,6 +70,9 @@ class TestAAM extends FunSuite {
 
   test("binopid - p4f"):
     testAnalyzer(new Analyzer0CFA with P4FContAlloc, benchmarks.binopid, "binopid_p4f")
+
+  test("binopid - aac"):
+    testAnalyzer(new Analyzer0CFA with AACContAlloc, benchmarks.binopid, "binopid_aac")
 }
 
 class TestLLM extends FunSuite {

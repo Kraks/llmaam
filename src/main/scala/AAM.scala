@@ -213,11 +213,19 @@ class Analyzer0CFA extends Analyzer:
 trait TgtContAlloc:
   self: Analyzer =>
   // Using the target expression as the continuation address
-  // (similar to Pushdown Control-Flow Analysis for Free, POPL16).
+  // (similar to the baseline version described in Pushdown Control-Flow Analysis for Free, POPL16).
   override def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr = KAddr(e1, List())
 
 trait P4FContAlloc:
   self: Analyzer =>
   // This implements the P4F continuation allocation strategy (Pushdown Control-Flow Analysis for Free, POPL 16).
-  // XXX: it doesn't work well for direct-style where we don't have ANF restriction
+  // XXX: it doesn't work automatically well for direct-style where we don't have ANF restriction
   override def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr = KAddr(e1, List(ρ1))
+
+trait AACContAlloc:
+  self: Analyzer =>
+  // This implements the AAC continuation allocation strategy, it (should) works for direct-style programs
+  // (AAC variant described in Pushdown Control-Flow Analysis for Free, POPL16).
+  override def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr =
+    val EState(e, ρ, σ, _, _, _) = s
+    KAddr(e1, List(ρ1, e, ρ, σ))
