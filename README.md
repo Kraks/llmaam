@@ -1,8 +1,11 @@
-## sbt project compiled with Scala 3
+## LLM-Driven Sound Abstract Interpretation
 
-### Usage
+### Get Started
 
-This is a normal sbt project. You can compile code with `sbt compile`, run it with `sbt run`, and `sbt console` will start a Scala 3 REPL.
+Install `sbt` and JVM. You can compile code with `sbt compile`, run it with `sbt run`, and `sbt console` will start a Scala 3 REPL.
 
-For more information on the sbt-dotty plugin, see the
-[scala3-example-project](https://github.com/scala/scala3-example-project/blob/main/README.md).
+Put Google Gemini API KEY in file `GEMINI_AI_KEY`.
+
+### Examples
+
+See some visualized analysis results of using different allocation strategies in `examples` folder.

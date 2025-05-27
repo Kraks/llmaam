@@ -225,7 +225,7 @@ trait P4FContAlloc:
 trait AACContAlloc:
   self: Analyzer =>
   // This implements the AAC continuation allocation strategy, it (should) works for direct-style programs
-  // (AAC variant described in Pushdown Control-Flow Analysis for Free, POPL16).
+  // (AAC variant described in Pushdown Control-Flow Analysis for Free, POPL 16).
   override def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr =
     val EState(e, ρ, σ, _, _, _) = s
-    KAddr(e1, List(ρ1, e, ρ, σ))
+    KAddr(e1, List(ρ1, e, ρ, σ)) // is ρ necessary?
