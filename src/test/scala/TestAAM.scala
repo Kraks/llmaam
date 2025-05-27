@@ -6,7 +6,7 @@ import munit.FunSuite
 import dev.langchain4j.model.googleai.*
 import dev.langchain4j.model.openai.*
 
-class MySuite extends FunSuite {
+class TestAAM extends FunSuite {
 
   test("simple app"):
     val analyzer = new Analyzer0CFA
@@ -14,7 +14,9 @@ class MySuite extends FunSuite {
     println(states.size)
     println(analyzer.order)
     analyzer.dumpGraph("app1.dot")
+}
 
+class TestLLM extends FunSuite {
   test("openai-demo"):
     val model = OpenAiChatModel.builder()
       .baseUrl("http://langchain4j.dev/demo/openai/v1")
