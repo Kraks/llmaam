@@ -15,7 +15,7 @@ enum Kont:
   case KArg(e: Expr, ρ: Env, k: KAddr)
   case KFun(lam: Expr.Lam, ρ: Env, k: KAddr)
   case KLet(x: String, ρ: Env, body: Expr, k: KAddr)
-  case KLetrec(x: String, ρ: Env, body: Expr, k: KAddr)
+  case KLetrec(x: String, xa: BAddr, ρ: Env, body: Expr, k: KAddr)
 
 // Addresses
 
@@ -101,11 +101,9 @@ abstract class Analyzer:
         val ρ1 = ρ + (x → α)
         val σᵥ1 = σᵥ ⊔ Map(α → Set(v))
         ("let-body", for { kont <- σₖ(k) } yield EState(e, ρ1, σᵥ1, σₖ, kont, t))
-      case VState(v, _, σᵥ, σₖ, KLetrec(x, ρ, e, k), t) =>
-        val α = allocBind(x, t)
-        val ρ1 = ρ + (x → α)
-        val σᵥ1 = σᵥ ⊔ Map(α → Set(v))
-        ("letrec-body", for { kont <- σₖ(k) } yield EState(e, ρ1, σᵥ1, σₖ, kont, t))
+      case VState(v, _, σᵥ, σₖ, KLetrec(x, αₓ, ρ, e, k), t) =>
+        val σᵥ1 = σᵥ ⊔ Map(αₓ → Set(v))
+        ("letrec-body", for { kont <- σₖ(k) } yield EState(e, ρ, σᵥ1, σₖ, kont, t))
 
   def step(s: State): (Label, Set[State]) =
     val t1 = tick(s)
@@ -137,12 +135,12 @@ abstract class Analyzer:
         val σₖ1 = σₖ ⊔ Map(α → Set(k))
         ("let-rhs", EState(rhs, ρ, σᵥ, σₖ1, KLet(x, ρ, body, α), t1))
       case EState(e@Letrec(x, rhs, body), ρ, σᵥ, σₖ, k, t) =>
-        val αb = allocBind(x, t1)
-        val ρ1 = ρ + (x → αb)
-        val σᵥ1 = σᵥ ⊔ Map(αb → Set())
-        val αk = allocKont(s, rhs, ρ1, σᵥ1, t1)
-        val σₖ1 = σₖ ⊔ Map(αk → Set(k))
-        ("letrec-rhs", EState(rhs, ρ1, σᵥ1, σₖ1, KLetrec(x, ρ, body, αk), t1))
+        val αᵥ = allocBind(x, t1)
+        val ρ1 = ρ + (x → αᵥ)
+        val σᵥ1 = σᵥ ⊔ Map(αᵥ → Set())
+        val αₖ = allocKont(s, rhs, ρ1, σᵥ1, t1)
+        val σₖ1 = σₖ ⊔ Map(αₖ → Set(k))
+        ("letrec-rhs", EState(rhs, ρ1, σᵥ1, σₖ1, KLetrec(x, αᵥ, ρ1, body, αₖ), t1))
 
   def drive(todo: List[State], seen: Set[State]): Set[State] =
     if (todo.isEmpty) seen
