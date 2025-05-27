@@ -22,6 +22,10 @@ jobs:
         distribution: temurin
         java-version: 17
         cache: sbt
+    - name: Set up dependencies
+      run: |
+        sudo apt-get update
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y graphviz
     - uses: sbt/setup-sbt@v1
     - name: Run tests
       run: sbt test
