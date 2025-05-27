@@ -1,0 +1,26 @@
+digraph G {
+  node [fontname = "Courier New"];
+  edge [fontname = "helvetica"];
+  0 -> 1 [label="app-lhs"];
+  1 -> 2 [label="lam"];
+  2 -> 3 [label="app-arg"];
+  3 -> 4 [label="lam"];
+  4 -> 5 [label="app-red"];
+  5 -> 6 [label="app-lhs"];
+  6 -> 7 [label="var"];
+  7 -> 8 [label="app-arg"];
+  8 -> 9 [label="var"];
+  9 -> 10 [label="app-red"];
+  10 -> 6 [label="app-lhs"];
+  4 [label="4|VState(⟨(λx. (x x)), Map()⟩)"];
+  5 [label="5|EState((x x))"];
+  1 [label="1|EState((λx. (x x)))"];
+  8 [label="8|EState(x)"];
+  10 [label="10|EState((x x))"];
+  0 [label="0|EState(((λx. (x x)) (λx. (x x))))"];
+  7 [label="7|VState(⟨(λx. (x x)), Map()⟩)"];
+  6 [label="6|EState(x)"];
+  3 [label="3|EState((λx. (x x)))"];
+  2 [label="2|VState(⟨(λx. (x x)), Map()⟩)"];
+  9 [label="9|VState(⟨(λx. (x x)), Map()⟩)"];
+}

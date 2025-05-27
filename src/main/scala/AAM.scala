@@ -165,7 +165,7 @@ abstract class Analyzer:
   def dumpGraph(filename: String): Unit =
     import java.io.{File, PrintWriter}
     import scala.sys.process._
-    val file = new File(filename)
+    val file = new File("result/" + filename)
     val writer = new PrintWriter(file)
     var counter = 0
     val numbering = HashMap[State, Int]()
@@ -196,7 +196,7 @@ abstract class Analyzer:
     }
     writer.println("}")
     writer.close()
-    val command = s"dot -Tpng ${filename} -o ${filename.replace(".dot", ".png")}"
+    val command = s"dot -Tpng result/${filename} -o result/${filename.replace(".dot", ".png")}"
     println("Executing command: " + command)
     command.!
 
