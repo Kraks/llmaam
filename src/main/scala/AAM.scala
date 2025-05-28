@@ -33,7 +33,7 @@ enum Value:
   case Num()
   case Clo(lam: Expr.Lam, ρ: Env)
   override def toString(): String = this match
-    case Num() => "ℕ"
+    case Num() => "ℤ"
     case Clo(lam, ρ) => s"⟨${lam}, ${ρ}⟩"
 
 type BStore = Map[BAddr, Set[Value]]
@@ -201,10 +201,24 @@ abstract class Analyzer:
     println("Executing command: " + command)
     command.!
 
-class Analyzer0CFA extends Analyzer:
+trait ZeroCFA:
+  self: Analyzer =>
   // 0CFA analysis has no instrumentation (no context-sensitivity)
   def tick(t: State): Time = List()
-  def allocBind(x: String, t: Time): BAddr = BAddr(x, List())
+  def allocBind(x: String, t: Time): BAddr = BAddr(x, t)
+
+trait KCFA(k: Int):
+  self: Analyzer =>
+  // kCFA analysis tracks the last k call strings as instrumentation
+  def tick(s: State): Time = s match
+    case EState(e: App, _, _, _, _, t) => (e :: t).take(k)
+    case EState(_, _, _, _, _, t) => t // doesn't tick if not a call
+    case VState(_, _, _, _, _, t) => t // value state doesn't tick
+    case ErrState() => ???
+  def allocBind(x: String, t: Time): BAddr = BAddr(x, t)
+
+trait SrcContAlloc:
+  self: Analyzer =>
   // Using the source/previous expression (that causes the allocation) as the continuation address
   // (as in Systematic abstraction of abstract machines, JFP 12)
   def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr =
@@ -215,18 +229,18 @@ trait TgtContAlloc:
   self: Analyzer =>
   // Using the target expression as the continuation address
   // (similar to the baseline version described in Pushdown Control-Flow Analysis for Free, POPL16).
-  override def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr = KAddr(e1, List())
+  def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr = KAddr(e1, List())
 
 trait P4FContAlloc:
   self: Analyzer =>
   // This implements the P4F continuation allocation strategy (Pushdown Control-Flow Analysis for Free, POPL 16).
   // XXX: it doesn't work automatically well for direct-style where we don't have ANF restriction
-  override def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr = KAddr(e1, List(ρ1))
+  def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr = KAddr(e1, List(ρ1))
 
 trait AACContAlloc:
   self: Analyzer =>
   // This implements the AAC continuation allocation strategy, it (should) works for direct-style programs
   // (AAC variant described in Pushdown Control-Flow Analysis for Free, POPL 16).
-  override def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr =
+  def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr =
     val EState(e, ρ, σ, _, _, _) = s
     KAddr(e1, List(ρ1, e, ρ, σ)) // is ρ necessary?

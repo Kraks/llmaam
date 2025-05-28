@@ -19,60 +19,63 @@ def testAnalyzer[T <: Analyzer](analyzer: T, program: Expr, name: String): Unit 
 
 class TestAAM extends FunSuite {
   test("simple app"):
-    testAnalyzer(new Analyzer0CFA, benchmarks.app1, "app1")
+    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.app1, "app1_0cfa")
 
   test("omega"):
-    testAnalyzer(new Analyzer0CFA, benchmarks.omega, "omega")
+    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.omega, "omega_0cfa")
 
   test("omega - aac"):
-    testAnalyzer(new Analyzer0CFA with AACContAlloc, benchmarks.omega, "omega_aac")
+    testAnalyzer(new Analyzer with ZeroCFA with AACContAlloc, benchmarks.omega, "omega_0cfa_aac")
 
   test("omega2"):
-    testAnalyzer(new Analyzer0CFA, benchmarks.omega2, "omega2")
+    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.omega2, "omega2_0cfa")
 
   /* comparing allocation strategies */
 
   // stack
 
   test("stack"):
-    testAnalyzer(new Analyzer0CFA, benchmarks.stack, "stack")
+    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.stack, "stack_0cfa")
 
   test("stack - tgt cont"):
-    testAnalyzer(new Analyzer0CFA with TgtContAlloc, benchmarks.stack, "stack_tgtcont")
+    testAnalyzer(new Analyzer with ZeroCFA with TgtContAlloc, benchmarks.stack, "stack_0cfa_tgtcont")
 
   test("stack - p4f"):
-    testAnalyzer(new Analyzer0CFA with P4FContAlloc, benchmarks.stack, "stack_p4f")
+    testAnalyzer(new Analyzer with ZeroCFA with P4FContAlloc, benchmarks.stack, "stack_0cfa_p4f")
 
   test("stack - aac"):
-    testAnalyzer(new Analyzer0CFA with AACContAlloc, benchmarks.stack, "stack_aac")
+    testAnalyzer(new Analyzer with ZeroCFA with AACContAlloc, benchmarks.stack, "stack_0cfa_aac")
 
   // stack2
 
-  test("stack2"):
-    testAnalyzer(new Analyzer0CFA, benchmarks.stack2, "stack2")
+  test("stack2 - src cont"):
+    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.stack2, "stack2_0cfa")
+
+  test("stack2 - 2cfa; aac"):
+    testAnalyzer(new Analyzer with KCFA(2) with AACContAlloc, benchmarks.stack2, "stack2_2cfa_aac")
 
   test("stack2 - tgt cont"):
-    testAnalyzer(new Analyzer0CFA with TgtContAlloc, benchmarks.stack2, "stack2_tgtcont")
+    testAnalyzer(new Analyzer with ZeroCFA with TgtContAlloc, benchmarks.stack2, "stack2_0cfa_tgtcont")
 
   test("stack2 - p4f"):
-    testAnalyzer(new Analyzer0CFA with P4FContAlloc, benchmarks.stack2, "stack2_p4f")
+    testAnalyzer(new Analyzer with ZeroCFA with P4FContAlloc, benchmarks.stack2, "stack2_0cfa_p4f")
 
   test("stack2 - aac"):
-    testAnalyzer(new Analyzer0CFA with AACContAlloc, benchmarks.stack2, "stack2_aac")
+    testAnalyzer(new Analyzer with ZeroCFA with AACContAlloc, benchmarks.stack2, "stack2_0cfa_aac")
 
   // binopid
 
   test("binopid"):
-    testAnalyzer(new Analyzer0CFA, benchmarks.binopid, "binopid")
+    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.binopid, "binopid_0cfa")
 
   test("binopid - tgt cont"):
-    testAnalyzer(new Analyzer0CFA with TgtContAlloc, benchmarks.binopid, "binopid_tgtcont")
+    testAnalyzer(new Analyzer with ZeroCFA with TgtContAlloc, benchmarks.binopid, "binopid_0cfa_tgtcont")
 
   test("binopid - p4f"):
-    testAnalyzer(new Analyzer0CFA with P4FContAlloc, benchmarks.binopid, "binopid_p4f")
+    testAnalyzer(new Analyzer with ZeroCFA with P4FContAlloc, benchmarks.binopid, "binopid_0cfa_p4f")
 
   test("binopid - aac"):
-    testAnalyzer(new Analyzer0CFA with AACContAlloc, benchmarks.binopid, "binopid_aac")
+    testAnalyzer(new Analyzer with ZeroCFA with AACContAlloc, benchmarks.binopid, "binopid_0cfa_aac")
 }
 
 class TestLLM extends FunSuite {

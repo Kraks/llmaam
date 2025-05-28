@@ -11,6 +11,7 @@ enum Expr:
   case App(f: Expr, arg: Expr)
   case Let(x: String, rhs: Expr, body: Expr)
   case Letrec(x: String, rhs: Expr, body: Expr)
+
   override def toString(): String = this match
     case Lit(n) => n.toString
     case UnaryOp(op, arg) => s"($op $arg)"
@@ -21,6 +22,7 @@ enum Expr:
     case Let(x, rhs, body) => s"(let $x = $rhs in $body)"
     case Letrec(x, rhs, body) => s"(letrec $x = $rhs in $body)"
 
+// TODO: conditionals, boolean
 // TODO: loop
 // TODO: mutable states
 // TODO: call/cc
