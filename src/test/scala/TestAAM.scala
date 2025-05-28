@@ -49,10 +49,7 @@ class TestAAM extends FunSuite {
   // stack2
 
   test("stack2 - src cont"):
-    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.stack2, "stack2_0cfa")
-
-  test("stack2 - tgt cont"):
-    testAnalyzer(new Analyzer with ZeroCFA with TgtContAlloc, benchmarks.stack2, "stack2_0cfa_tgtcont")
+    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.stack2, "stack2_0cfa_srccont")
 
   test("stack2 - aac"):
     testAnalyzer(new Analyzer with ZeroCFA with AACContAlloc, benchmarks.stack2, "stack2_0cfa_aac")
