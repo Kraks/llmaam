@@ -128,6 +128,7 @@ abstract class Analyzer:
         ("op2-lhs", EState(e1, ρ, σᵥ, σₖ1, KBinOpR(op, e2, ρ, α), t1))
       case EState(e@App(f, arg), ρ, σᵥ, σₖ, k, t) =>
         val α = allocKont(s, f, ρ, σᵥ, t1)
+        //println(s"Allocating continuation for ${e} at ${α}")
         val σₖ1 = σₖ ⊔ Map(α → Set(k))
         ("app-lhs", EState(f, ρ, σᵥ, σₖ1, KArg(arg, ρ, α), t1))
       case EState(e@Let(x, rhs, body), ρ, σᵥ, σₖ, k, t) =>
@@ -160,7 +161,7 @@ abstract class Analyzer:
     val initial = inject(e)
     drive(List(initial), Set())
 
-  def dumpGraph(filename: String): Unit =
+  def dumpGraph(filename: String, printNodeExpr: Boolean = true): Unit =
     import java.io.{File, PrintWriter}
     import java.nio.file.{Files, Paths, Path}
     import scala.sys.process._
@@ -186,18 +187,19 @@ abstract class Analyzer:
       }
     }
     // print node labels
-    for ((s, n) <- numbering) {
-      s match
-        case EState(e, ρ, σᵥ, σₖ, k, t) =>
-          writer.println(s"""  ${n} [label="${n}|EState(${e})"];""")
-        case VState(v, ρ, σᵥ, σₖ, k, t) =>
-          writer.println(s"""  ${n} [label="${n}|VState(${v})"];""")
-        case ErrState() =>
-          writer.println(s"""  ${n} [label="${n}|ErrState()"];""")
+    if (printNodeExpr) {
+      for ((s, n) <- numbering)
+        s match
+          case EState(e, ρ, σᵥ, σₖ, k, t) =>
+            writer.println(s"""  ${n} [label="${n}|EState(${e})"];""")
+          case VState(v, ρ, σᵥ, σₖ, k, t) =>
+            writer.println(s"""  ${n} [label="${n}|VState(${v})"];""")
+          case ErrState() =>
+            writer.println(s"""  ${n} [label="${n}|ErrState()"];""")
     }
     writer.println("}")
     writer.close()
-    val command = s"dot -Tpng result/${filename} -o result/${filename.replace(".dot", ".png")}"
+    val command = s"dot -Tpdf result/${filename} -o result/${filename.replace(".dot", ".pdf")}"
     println("Executing command: " + command)
     command.!
 

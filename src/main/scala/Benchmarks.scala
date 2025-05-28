@@ -54,3 +54,10 @@ id(2) + id(2)
 */
 val binopid = Let("id", Lam("z", Var("z")),
   BinOp("+", App(Var("id"), Lit(2)), App(Var("id"), Lit(2))))
+
+/*
+let id = λz. z in
+id(1) + id(2)
+*/
+val binopid2 = Let("id", Lam("z", Var("z")),
+  BinOp("+", App(Var("id"), Lit(1)), App(Var("id"), Lit(2))))
