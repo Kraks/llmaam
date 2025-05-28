@@ -51,17 +51,25 @@ class TestAAM extends FunSuite {
   test("stack2 - src cont"):
     testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.stack2, "stack2_0cfa")
 
-  test("stack2 - 2cfa; aac"):
-    testAnalyzer(new Analyzer with KCFA(2) with AACContAlloc, benchmarks.stack2, "stack2_2cfa_aac")
-
   test("stack2 - tgt cont"):
     testAnalyzer(new Analyzer with ZeroCFA with TgtContAlloc, benchmarks.stack2, "stack2_0cfa_tgtcont")
 
-  test("stack2 - p4f"):
-    testAnalyzer(new Analyzer with ZeroCFA with P4FContAlloc, benchmarks.stack2, "stack2_0cfa_p4f")
-
   test("stack2 - aac"):
     testAnalyzer(new Analyzer with ZeroCFA with AACContAlloc, benchmarks.stack2, "stack2_0cfa_aac")
+
+  // Observe that only 2-CFA + P4F can recover the full precision of the analysis of stack2:
+
+  test("stack2 - 0cfa; tgt cont"):
+    testAnalyzer(new Analyzer with ZeroCFA with TgtContAlloc, benchmarks.stack2, "stack2_0cfa")
+
+  test("stack2 - 2cfa; tgt cont"):
+    testAnalyzer(new Analyzer with KCFA(2) with TgtContAlloc, benchmarks.stack2, "stack2_2cfa")
+
+  test("stack2 - 0cfa; p4f"):
+    testAnalyzer(new Analyzer with ZeroCFA with P4FContAlloc, benchmarks.stack2, "stack2_0cfa_p4f")
+
+  test("stack2 - 2cfa; p4f"):
+    testAnalyzer(new Analyzer with KCFA(2) with P4FContAlloc, benchmarks.stack2, "stack2_2cfa_p4f")
 
   // binopid
 
