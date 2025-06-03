@@ -1,5 +1,6 @@
 package llmaam.aam
 
+import upickle.default.*
 import scala.collection.mutable.{ListBuffer, HashMap}
 
 import llmaam.syntax.*
@@ -19,8 +20,10 @@ enum Kont:
 
 // Addresses
 
-case class BAddr(x: String, instrumentation: List[Any] = List())
-case class KAddr(e: Expr, instrumentation: List[Any] = List())
+// TODO: make it deserializable
+type Inst = State | Env | BStore | KStore | Expr
+case class BAddr(x: String, instrumentation: List[Inst] = List())
+case class KAddr(e: Expr, instrumentation: List[Inst] = List())
 
 // Environments and stores
 
@@ -56,7 +59,7 @@ abstract class Analyzer:
   type Label = String
 
   def tick(t: State): Time
-  def allocBind(x: String, t: Time): BAddr
+  def allocBind(s: State, x: String, t: Time): BAddr
   /* allocKont can access the current state s,
    * the new control string e1, the new environment ρ1,
    * the new value store σᵥ1, and the instrumentation (``ticked'' history) t.
@@ -83,7 +86,7 @@ abstract class Analyzer:
         ("app-arg", EState(e, ρ2, σᵥ, σₖ, KFun(lam, ρ1, k), t))
       // KFun (beta) can be applied to any argument value
       case VState(v, _, σᵥ, σₖ, KFun(Lam(x, e), ρ, k), t) =>
-        val α = allocBind(x, t)
+        val α = allocBind(s, x, t)
         val ρ1 = ρ + (x → α)
         val σᵥ1 = σᵥ ⊔ Map(α → Set(v))
         ("app-red", for { kont <- σₖ(k) } yield EState(e, ρ1, σᵥ1, σₖ, kont, t))
@@ -97,7 +100,7 @@ abstract class Analyzer:
       case VState(Num(), _, σᵥ, σₖ, KBinOpL(op, Num(), k), t) =>
         ("op2-red", for { kont <- σₖ(k) } yield VState(Num(), Map(), σᵥ, σₖ, kont, t))
       case VState(v, _, σᵥ, σₖ, KLet(x, ρ, e, k), t) =>
-        val α = allocBind(x, t)
+        val α = allocBind(s, x, t)
         val ρ1 = ρ + (x → α)
         val σᵥ1 = σᵥ ⊔ Map(α → Set(v))
         ("let-body", for { kont <- σₖ(k) } yield EState(e, ρ1, σᵥ1, σₖ, kont, t))
@@ -136,7 +139,7 @@ abstract class Analyzer:
         val σₖ1 = σₖ ⊔ Map(α → Set(k))
         ("let-rhs", EState(rhs, ρ, σᵥ, σₖ1, KLet(x, ρ, body, α), t1))
       case EState(e@Letrec(x, rhs, body), ρ, σᵥ, σₖ, k, t) =>
-        val αᵥ = allocBind(x, t1)
+        val αᵥ = allocBind(s, x, t1)
         val ρ1 = ρ + (x → αᵥ)
         val σᵥ1 = σᵥ ⊔ Map(αᵥ → Set())
         val αₖ = allocKont(s, rhs, ρ1, σᵥ1, t1)
@@ -207,7 +210,7 @@ trait ZeroCFA:
   self: Analyzer =>
   // 0CFA analysis has no instrumentation (no context-sensitivity)
   def tick(t: State): Time = List()
-  def allocBind(x: String, t: Time): BAddr = BAddr(x, t)
+  def allocBind(s: State, x: String, t: Time): BAddr = BAddr(x, t)
 
 trait KCFA(k: Int):
   self: Analyzer =>
@@ -217,7 +220,7 @@ trait KCFA(k: Int):
     case EState(_, _, _, _, _, t) => t // doesn't tick if not a call
     case VState(_, _, _, _, _, t) => t // value state doesn't tick
     case ErrState() => ???
-  def allocBind(x: String, t: Time): BAddr = BAddr(x, t)
+  def allocBind(s: State, x: String, t: Time): BAddr = BAddr(x, t)
 
 trait SrcContAlloc:
   self: Analyzer =>
@@ -245,4 +248,4 @@ trait AACContAlloc:
   // (AAC variant described in Pushdown Control-Flow Analysis for Free, POPL 16).
   def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr =
     val EState(e, ρ, σ, _, _, _) = s
-    KAddr(e1, List(ρ1, e, ρ, σ)) // is ρ necessary?
+    KAddr(e1, List(ρ1, e, ρ, σ)) // XXX: is ρ necessary?

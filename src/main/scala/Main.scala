@@ -2,6 +2,8 @@ package llmaam
 
 import dev.langchain4j.model.googleai.*
 import dev.langchain4j.model.openai.*
+import dev.langchain4j.data.message.SystemMessage
+import dev.langchain4j.data.message.UserMessage
 import dev.langchain4j.model.chat.request.ResponseFormat
 
 import scala.io.Source
@@ -15,5 +17,8 @@ import scala.io.Source
     //.responseFormat(ResponseFormat.JSON)
     .build()
 
-  val answer = gemini.chat("You are a static analyzer following the AAM (Abstracting Abstract M) semantics. You are given a program in the form of an expression, and you need to analyze it. The program is: letrec f = Lam x (App (Var f) (Lit 1)) in App (Var f) (Lit 2). What is the result of this program?")
+  val answer = gemini.chat(
+    SystemMessage.from(aam.initPrompt),
+    UserMessage.from("allocKont(s, App(f, g), Map(), Map(), List())"),
+  )
   println(answer)
