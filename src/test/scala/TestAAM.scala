@@ -15,7 +15,7 @@ def testAnalyzer[T <: Analyzer](analyzer: T, program: Expr, name: String): Unit 
   }
   // Check the recorded "transitions" match the states found
   assert(states == transitionStates)
-  analyzer.dumpGraph(s"${name}.dot", false)
+  analyzer.dumpGraph(s"${name}.dot", true)
 
 class Playground extends FunSuite {
   //test("stack2 - 2cfa; p4f"):

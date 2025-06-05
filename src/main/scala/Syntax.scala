@@ -21,8 +21,3 @@ enum Expr:
     case App(f, arg) => s"($f $arg)"
     case Let(x, rhs, body) => s"(let $x = $rhs in $body)"
     case Letrec(x, rhs, body) => s"(letrec $x = $rhs in $body)"
-
-// TODO: conditionals, boolean
-// TODO: loop
-// TODO: mutable states
-// TODO: call/cc

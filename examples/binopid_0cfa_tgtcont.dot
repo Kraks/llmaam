@@ -29,20 +29,20 @@ digraph G {
   11 [label="11|EState((id 2))"];
   2 [label="2|VState(⟨(λz. z), Map()⟩)"];
   14 [label="14|EState(2)"];
-  20 [label="20|VState(ℕ)"];
+  20 [label="20|VState(ℤ)"];
   13 [label="13|VState(⟨(λz. z), Map()⟩)"];
   3 [label="3|EState(((id 2) + (id 2)))"];
   0 [label="0|EState((let id = (λz. z) in ((id 2) + (id 2))))"];
   4 [label="4|EState((id 2))"];
   17 [label="17|EState(z)"];
-  10 [label="10|VState(ℕ)"];
+  10 [label="10|VState(ℤ)"];
   7 [label="7|EState(2)"];
   5 [label="5|EState(id)"];
-  21 [label="21|VState(ℕ)"];
+  21 [label="21|VState(ℤ)"];
   12 [label="12|EState(id)"];
-  8 [label="8|VState(ℕ)"];
-  18 [label="18|VState(ℕ)"];
+  8 [label="8|VState(ℤ)"];
+  18 [label="18|VState(ℤ)"];
   6 [label="6|VState(⟨(λz. z), Map()⟩)"];
-  15 [label="15|VState(ℕ)"];
+  15 [label="15|VState(ℤ)"];
   1 [label="1|EState((λz. z))"];
 }
