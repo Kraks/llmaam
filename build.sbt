@@ -15,5 +15,6 @@ lazy val root = project
     libraryDependencies += "dev.langchain4j" % "langchain4j-google-ai-gemini" % "1.0.1-beta6" % Compile,
     libraryDependencies += "org.slf4j" % "slf4j-simple" % "2.0.17" % Runtime,
     libraryDependencies += "org.scalameta" %% "munit" % "1.0.0" % Test,
-    libraryDependencies ++= Seq("org.scala-lang" %% "toolkit" % "0.2.0", "org.scala-lang" %% "toolkit-test" % "0.2.0" % Test)
+    libraryDependencies ++= Seq("org.scala-lang" %% "toolkit" % "0.2.0", "org.scala-lang" %% "toolkit-test" % "0.2.0" % Test),
+    libraryDependencies += "org.scala-lang" %% "scala3-compiler" % scalaVersion.value
   )

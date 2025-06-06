@@ -16,7 +16,8 @@ See some visualized analysis results of using different allocation strategies in
 ### TODO
 
 - [ ] OpenAI and Deepseek API support
-- [ ] tweak prompt (LLMAllocator) so that the response can be reified back to Scala code
+- [ ] Give better prompt (eg existing strategy etc) to guide LLM make better decisions
+- [x] tweak prompt (LLMAllocator) so that the response can be reified back to Scala code
 - [ ] support conditionals and boolean
 - [ ] support loops
 - [ ] support mutable states

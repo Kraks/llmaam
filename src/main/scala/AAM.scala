@@ -20,10 +20,8 @@ enum Kont:
 
 // Addresses
 
-// TODO: make it deserializable
-type Inst = State | Env | BStore | KStore | Expr
-case class BAddr(x: String, instrumentation: List[Inst] = List())
-case class KAddr(e: Expr, instrumentation: List[Inst] = List())
+case class BAddr(x: String, instrumentation: List[Any] = List())
+case class KAddr(instrumentation: List[Any] = List())
 
 // Environments and stores
 
@@ -228,19 +226,19 @@ trait SrcContAlloc:
   // (as in Systematic abstraction of abstract machines, JFP 12)
   def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr =
     val EState(e, _, _, _, _, _) = s
-    KAddr(e, List())
+    KAddr(List(e))
 
 trait TgtContAlloc:
   self: Analyzer =>
   // Using the target expression as the continuation address
   // (similar to the baseline version described in Pushdown Control-Flow Analysis for Free, POPL16).
-  def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr = KAddr(e1, List())
+  def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr = KAddr(List(e1))
 
 trait P4FContAlloc:
   self: Analyzer =>
   // This implements the P4F continuation allocation strategy (Pushdown Control-Flow Analysis for Free, POPL 16).
   // XXX: it doesn't work automatically well for direct-style where we don't have ANF restriction
-  def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr = KAddr(e1, List(ρ1))
+  def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr = KAddr(List(e1, ρ1))
 
 trait AACContAlloc:
   self: Analyzer =>
@@ -248,4 +246,4 @@ trait AACContAlloc:
   // (AAC variant described in Pushdown Control-Flow Analysis for Free, POPL 16).
   def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr =
     val EState(e, ρ, σ, _, _, _) = s
-    KAddr(e1, List(ρ1, e, ρ, σ)) // XXX: is ρ necessary?
+    KAddr(List(e1, ρ1, e, ρ, σ)) // XXX: is ρ necessary?
