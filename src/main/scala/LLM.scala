@@ -79,7 +79,8 @@ trait LLMAllocator:
 
 def initPrompt: String =
   s"""
-  |Your task is to analyze the process of static analysis or abstract interpretation simulated by an abstract machine.
+  |You are an expert in static analysis and abstract interpretation, specifically in the "abstracting abstract machine" approach.
+  |Your task is to analyze the process of static analysis simulated by an abstract machine.
   |I will provide you the data structures used in the abstract interpretation first,
   |then give your the current analysis state, ask you to analyze it, and ask you to return an abstract address used in the allocation.
   |
@@ -146,6 +147,8 @@ def initPrompt: String =
   |}
   |
   |You should analyze the current "state" and return an abstract address for better analysis precision.
+  |You should look at the entries of the existing binding store and continuation store,
+  |since if the binding address already exists, reusing it decreases the precision of the analysis.
   |
   |Your output should be only a JSON object with the following schema:
   |{
