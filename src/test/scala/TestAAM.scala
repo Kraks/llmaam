@@ -66,14 +66,14 @@ class TestAAM extends FunSuite {
   test("stack2 - 0cfa; tgt cont"):
     testAnalyzer(new Analyzer with ZeroCFA with TgtContAlloc, benchmarks.stack2, "stack2_0cfa")
 
-  test("stack2 - 2cfa; tgt cont"):
-    testAnalyzer(new Analyzer with KCFA(2) with TgtContAlloc, benchmarks.stack2, "stack2_2cfa")
+  test("stack2 - 1cfa; tgt cont"):
+    testAnalyzer(new Analyzer with KCFA(1) with TgtContAlloc, benchmarks.stack2, "stack2_1cfa")
 
   test("stack2 - 0cfa; p4f"):
     testAnalyzer(new Analyzer with ZeroCFA with P4FContAlloc, benchmarks.stack2, "stack2_0cfa_p4f")
 
-  test("stack2 - 2cfa; p4f"):
-    testAnalyzer(new Analyzer with KCFA(2) with P4FContAlloc, benchmarks.stack2, "stack2_2cfa_p4f")
+  test("stack2 - 1cfa; p4f"):
+    testAnalyzer(new Analyzer with KCFA(1) with P4FContAlloc, benchmarks.stack2, "stack2_1cfa_p4f")
 
   // binopid
 
