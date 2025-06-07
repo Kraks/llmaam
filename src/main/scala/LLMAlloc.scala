@@ -20,39 +20,10 @@ trait LLMAlloc:
 
   // Need to be provided:
   def llm: ChatModel
+  def prepareBindAddrQuery(s: State, x: String, t: Time): String
+  def prepareKontAddrQuery(s: State, src: Expr, tgt: Expr, tgtEnv: Env, tgtSt: BStore, t: Time): String
+  def prepareTickQuery(s: State, t: Time): String
   def systemMsg: String
-
-  def prepareBindAddrQuery(s: State, x: String, t: Time): String =
-    s"""
-    |{
-    |  "state": ${s},
-    |  "query-type": "BAddr",
-    |  "variable": ${x},
-    |  "time": ${t},
-    |}
-    |""".stripMargin
-
-  def prepareKontAddrQuery(s: State, src: Expr, tgt: Expr, tgtEnv: Env, tgtSt: BStore, t: Time): String =
-    s"""
-    |{
-    |  "state": ${s},
-    |  "query-type": "KAddr",
-    |  "time": ${t},
-    |  "source-expression": ${src},
-    |  "target-expression": ${tgt},
-    |  "target-environment": ${tgtEnv},
-    |  "target-binding-store": ${tgtSt},
-    |}
-    |""".stripMargin
-
-  def prepareTickQuery(s: State, t: Time): String =
-    s"""
-    |{
-    |  "state": ${s},
-    |  "query-type": "Tick",
-    |  "time": ${t}
-    |}
-    |""".stripMargin
 
   def queryLLM(q: String): Map[String, String] =
     println(s"Query: $q")

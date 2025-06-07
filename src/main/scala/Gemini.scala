@@ -24,9 +24,42 @@ trait Gemini:
     .responseFormat(ResponseFormat.JSON)
     .logRequestsAndResponses(true)
     .build()
+
   def llm: ChatModel = gemini
-  def systemMsg: String =
-  s"""
+
+  def prepareBindAddrQuery(s: State, x: String, t: Time): String =
+    s"""
+    |{
+    |  "state": ${s},
+    |  "query-type": "BAddr",
+    |  "variable": ${x},
+    |  "time": ${t},
+    |}
+    |""".stripMargin
+
+  def prepareKontAddrQuery(s: State, src: Expr, tgt: Expr, tgtEnv: Env, tgtSt: BStore, t: Time): String =
+    s"""
+    |{
+    |  "state": ${s},
+    |  "query-type": "KAddr",
+    |  "time": ${t},
+    |  "source-expression": ${src},
+    |  "target-expression": ${tgt},
+    |  "target-environment": ${tgtEnv},
+    |  "target-binding-store": ${tgtSt},
+    |}
+    |""".stripMargin
+
+  def prepareTickQuery(s: State, t: Time): String =
+    s"""
+    |{
+    |  "state": ${s},
+    |  "query-type": "Tick",
+    |  "time": ${t}
+    |}
+    |""".stripMargin
+
+  def systemMsg: String = s"""
   |You are an expert in static analysis and abstract interpretation, specifically in the "abstracting abstract machine" approach.
   |Your task is to analyze the process of static analysis simulated by an abstract machine.
   |I will provide you the data structures used in the abstract interpretation first,
