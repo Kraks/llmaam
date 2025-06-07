@@ -9,7 +9,7 @@ import dev.langchain4j.model.openai.*
 
 def testAnalyzer[T <: Analyzer](analyzer: T, program: Expr, name: String): Unit =
   val states = analyzer.run(program)
-  println(s"Total states for ${name}: ${states.size}")
+  println(s"Analysis summary [${name}]: #State: ${states.size}, #Edges: ${analyzer.transitions.size}")
   val transitionStates = analyzer.transitions.foldLeft(Set[State]()) {
     case (acc, (from, lab, to)) => acc + from ++ to
   }

@@ -37,8 +37,9 @@ trait LLMAlloc:
     s match
       case EState(e: Expr.App, _, _, _, _, t) =>
         val parsed = queryLLM(prepareTickQuery(s, t))
-        assert(parsed("type") == "Tick", s"Expected Tick, got ${parsed("query-type")}")
-        (e :: t).take(0)
+        assert(parsed("query-type") == "Tick", s"Expected Tick, got ${parsed("query-type")}")
+        val k = parsed("k").toInt
+        (e :: t).take(k)
       case EState(_, _, _, _, _, t) => t // doesn't tick if not a call
       case VState(_, _, _, _, _, t) => t // value state doesn't tick
       case ErrState() => ???

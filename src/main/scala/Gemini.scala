@@ -61,7 +61,7 @@ trait Gemini:
 
   def systemMsg: String = s"""
   |You are an expert in static analysis and abstract interpretation, specifically in the "abstracting abstract machine" approach.
-  |Your task is to analyze the process of static analysis simulated by an abstract machine.
+  |Your task is to analyze the process of a small-step abstract interpreter that transforms an abstract machine state into possible successor states.
   |I will provide you the data structures used in the abstract interpretation first,
   |then give your the current analysis state, ask you to analyze it, and ask you to decide the context-sensitivity or
   |return an abstract address used in the allocation.
@@ -136,29 +136,34 @@ trait Gemini:
   |{
   |  "reason": string
   |  "query-type": "BAddr" or "KAddr" or "Tick",,
-  |  "variable": String,           // for BAddr only
-  |  "time": Bool,                 // for both BAddr and KAddr
-  |  "source-expression": Bool,    // for KAddr only
-  |  "target-expression": Bool,    // for KAddr only
-  |  "target-environment": Bool,   // for KAddr only
-  |  "target-binding-store": Bool, // for KAddr only
-  |  "k": Int,                     // for Tick only
+  |  "variable": String,              // for BAddr only
+  |  "time": Bool,                    // for both BAddr and KAddr
+  |  "source-expression": Bool,       // for KAddr only
+  |  "target-expression": Bool,       // for KAddr only
+  |  "target-environment": Bool,      // for KAddr only
+  |  "target-binding-store": Bool,    // for KAddr only
+  |  "k": Int represented as String,  // for Tick only
   |}
   |
   |Field "reason" should explain why you chose this address for better precision by analyzing the current state.
   |The reason you give should be specific to the current state and should not be generic.
   |Field "query-type" should be either "BAddr", "KAddr", or "Tick" according to the "query-type" field in the input query.
+  |
+  |Only if "query-type" is "BAddr":
+  |Field "time" should be true if the binding address should be instrumented with the time (call history).
+  |You may set time to false if you think it is not needed for the analysis.
   |Field "variable" should the same variable name as in the input query for binding addresses.
   |
-  |Only if "type" is "KAddr":
-  |Field "source-expression" should be true if you think the continuation address should be instrumented with the source expression, otherwise false.
-  |Field "target-expression" should be true if you think the continuation address should be instrumented with the target expression, otherwise false.
-  |Field "target-environment" should be true if you think the continuation address should be instrumented with the target environment, otherwise false.
-  |Field "target-binding-store" should be true if you think the continuation address should be instrumented with the target binding store, otherwise false.
+  |Only if "query-type" is "KAddr":
+  |Field "source-expression" should be true if the continuation address should be instrumented with the source expression, otherwise false.
+  |Field "target-expression" should be true if the continuation address should be instrumented with the target expression, otherwise false.
+  |Field "target-environment" should be true if the continuation address should be instrumented with the target environment, otherwise false.
+  |Field "target-binding-store" should be true if the continuation address should be instrumented with the target binding store, otherwise false.
   |
-  |Only if "type" is "Tick":
-  |Field "k" should be the number of context-sensitivity levels to use in the analysis.
-  |Given the returned value of "k", the analysis will use k-CFA (k-context-sensitive flow analysis) by
-  |truncating the call history with the last k call sites (i.e. in code (e :: t).take(k)).
+  |Only if "query-type" is "Tick":
+  |Field "k" should be the number (represented as a quoted string) of context-sensitivity levels to use in the analysis.
+  |Given the returned value of "k", the analysis will be k-call-context-sensitive.
+  |(i.e. in code the current call expression is prepended to the history, and then the take first k call sites of the whole history).
+  |Typically, k is a small number, like 0 or 1. If you think k >= 2 is needed, please explain why in the "reason" field.
   |
   |""".stripMargin
