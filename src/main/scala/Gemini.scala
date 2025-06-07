@@ -6,6 +6,7 @@ import scala.io.Source
 import scala.collection.mutable.{ListBuffer, HashMap}
 import upickle.default.*
 
+import dev.langchain4j.model.chat.ChatModel
 import dev.langchain4j.model.googleai.*
 import dev.langchain4j.model.openai.*
 import dev.langchain4j.data.message.SystemMessage
@@ -14,8 +15,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat
 
 import State.*
 
-trait LLMAllocator:
-  self: Analyzer =>
+trait Gemini:
   val geminiAPI = Source.fromFile("GEMINI_AI_KEY").getLines().next()
   val gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(geminiAPI)
@@ -24,65 +24,14 @@ trait LLMAllocator:
     .responseFormat(ResponseFormat.JSON)
     .logRequestsAndResponses(true)
     .build()
-  def prepareBindAddrQuery(s: State, x: String, t: Time): String =
-    s"""
-    |{
-    |  "state": ${s},
-    |  "query-type": "BAddr",
-    |  "variable": ${x},
-    |  "time": ${t},
-    |}
-    |""".stripMargin
-
-  def prepareKontAddrQuery(s: State, src: Expr, tgt: Expr, tgtEnv: Env, tgtSt: BStore, t: Time): String =
-    s"""
-    |{
-    |  "state": ${s},
-    |  "query-type": "KAddr",
-    |  "time": ${t},
-    |  "source-expression": ${src},
-    |  "target-expression": ${tgt},
-    |  "target-environment": ${tgtEnv},
-    |  "target-binding-store": ${tgtSt},
-    |}
-    |""".stripMargin
-
-  def tick(t: State): Time = List()
-  def allocBind(s: State, x: String, t: Time): BAddr =
-    val query = prepareBindAddrQuery(s, x, t)
-    //println(s"Query: $query")
-    val answer = gemini.chat(SystemMessage.from(initPrompt), UserMessage.from(query))
-    //println(s"Answer: ${answer.aiMessage.text}")
-    val parsed = read[Map[String, String]](answer.aiMessage.text)
-    //println(s"Parsed: ${parsed}")
-    assert(parsed("type") == "BAddr", s"Expected BAddr, got ${parsed("type")}")
-    // Refactor to Option type?
-    if (parsed("time") == "true") BAddr(x, t)
-    else BAddr(x, List())
-
-  def allocKont(s: State, tgt: Expr, tgtEnv: Env, tgtSt: BStore, t: Time): KAddr =
-    val EState(e, ρ, σ, _, _, _) = s
-    val query = prepareKontAddrQuery(s, e, tgt, tgtEnv, tgtSt, t)
-    println(s"Query: $query")
-    val answer = gemini.chat(SystemMessage.from(initPrompt), UserMessage.from(query))
-    println(s"Answer: ${answer.aiMessage.text}")
-    val parsed = read[Map[String, String]](answer.aiMessage.text)
-    //println(s"Parsed: ${parsed}")
-    assert(parsed("type") == "KAddr", s"Expected KAddr, got ${parsed("type")}")
-    val inst: ListBuffer[Option[Any]] = new ListBuffer()
-    inst.append(if (parsed("source-expression") == "true") Some(e) else None)
-    inst.append(if (parsed("target-expression") == "true") Some(tgt) else None)
-    inst.append(if (parsed("target-environment") == "true") Some(tgtEnv) else None)
-    inst.append(if (parsed("target-binding-store") == "true") Some(tgtSt) else None)
-    inst.append(if (parsed("time") == "true") Some(t) else None)
-    KAddr(inst.toList)
-
-def initPrompt: String =
+  def llm: ChatModel = gemini
+  def systemMsg: String =
   s"""
   |You are an expert in static analysis and abstract interpretation, specifically in the "abstracting abstract machine" approach.
   |Your task is to analyze the process of static analysis simulated by an abstract machine.
   |I will provide you the data structures used in the abstract interpretation first,
-  |then give your the current analysis state, ask you to analyze it, and ask you to return an abstract address used in the allocation.
+  |then give your the current analysis state, ask you to analyze it, and ask you to decide the context-sensitivity or
+  |return an abstract address used in the allocation.
   |
   |The "State" field is an abstract state, which can be one of the following:
   |enum State:
@@ -90,8 +39,8 @@ def initPrompt: String =
   |  case VState(v: Value, ρ: Env, σᵥ: BStore, σₖ: KStore, k: Kont, t: Time)
   |  case ErrState()
   |
-  |The "Expr" of "State" field is the current expression being evaluated, which is defined by the following algebraic data type:
-  |  enum Expr:
+  |The "Expr" of "State" field is the current program/expression being evaluated, which is defined by the following algebraic data type:
+  |enum Expr:
   |  case Lit(n: Int)
   |  case UnaryOp(op: String, arg: Expr)
   |  case BinOp(op: String, lhs: Expr, rhs: Expr)
@@ -137,9 +86,9 @@ def initPrompt: String =
   |Your input is a JSON object with the following schema:
   |{
   |  "state": State,
-  |  "query-type": "BAddr" or "KAddr",
+  |  "query-type": "BAddr" or "KAddr" or "Tick",
   |  "variable": String,                  // for BAddr only
-  |  "time": Time,                        // for both BAddr and KAddr
+  |  "time": Time,                        // for both BAddr and KAddr and "Tick"
   |  "source-expression": Expr,           // for KAddr only
   |  "target-expression": Expr,           // for KAddr only
   |  "target-environment": Env,           // for KAddr only
@@ -153,18 +102,19 @@ def initPrompt: String =
   |Your output should be only a JSON object with the following schema:
   |{
   |  "reason": string
-  |  "type": "BAddr" or "KAddr",
-  |  "variable": String,   // for BAddr only
-  |  "time": Bool,         // for both BAddr and KAddr
-  |  "source-expression": Bool, // for KAddr only
-  |  "target-expression": Bool, // for KAddr only
-  |  "target-environment": Bool, // for KAddr only
+  |  "query-type": "BAddr" or "KAddr" or "Tick",,
+  |  "variable": String,           // for BAddr only
+  |  "time": Bool,                 // for both BAddr and KAddr
+  |  "source-expression": Bool,    // for KAddr only
+  |  "target-expression": Bool,    // for KAddr only
+  |  "target-environment": Bool,   // for KAddr only
   |  "target-binding-store": Bool, // for KAddr only
+  |  "k": Int,                     // for Tick only
   |}
   |
   |Field "reason" should explain why you chose this address for better precision by analyzing the current state.
   |The reason you give should be specific to the current state and should not be generic.
-  |Field "type" should be either "BAddr" or "KAddr" according to the "query-type" field in the input query.
+  |Field "query-type" should be either "BAddr", "KAddr", or "Tick" according to the "query-type" field in the input query.
   |Field "variable" should the same variable name as in the input query for binding addresses.
   |
   |Only if "type" is "KAddr":
@@ -172,5 +122,10 @@ def initPrompt: String =
   |Field "target-expression" should be true if you think the continuation address should be instrumented with the target expression, otherwise false.
   |Field "target-environment" should be true if you think the continuation address should be instrumented with the target environment, otherwise false.
   |Field "target-binding-store" should be true if you think the continuation address should be instrumented with the target binding store, otherwise false.
+  |
+  |Only if "type" is "Tick":
+  |Field "k" should be the number of context-sensitivity levels to use in the analysis.
+  |Given the returned value of "k", the analysis will use k-CFA (k-context-sensitive flow analysis) by
+  |truncating the call history with the last k call sites (i.e. in code (e :: t).take(k)).
   |
   |""".stripMargin

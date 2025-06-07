@@ -21,7 +21,8 @@ class Playground extends FunSuite {
   //test("stack2 - 2cfa; p4f"):
   //  testAnalyzer(new Analyzer with KCFA(2) with P4FContAlloc, benchmarks.stack2, "stack2_2cfa_p4f")
 
-  testAnalyzer(new Analyzer with LLMAllocator, benchmarks.omega, "llm_exp")
+  testAnalyzer(new Analyzer with LLMAlloc with Gemini, benchmarks.omega, "llm_exp")
+  //testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.omega, "omega_0cfa")
 }
 
 class TestAAM extends FunSuite {

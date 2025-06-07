@@ -207,7 +207,7 @@ abstract class Analyzer:
 trait ZeroCFA:
   self: Analyzer =>
   // 0CFA analysis has no instrumentation (no context-sensitivity)
-  def tick(t: State): Time = List()
+  def tick(s: State): Time = List()
   def allocBind(s: State, x: String, t: Time): BAddr = BAddr(x, t)
 
 trait KCFA(k: Int):

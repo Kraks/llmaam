@@ -17,8 +17,3 @@ import scala.io.Source
     //.responseFormat(ResponseFormat.JSON)
     .build()
 
-  val answer = gemini.chat(
-    SystemMessage.from(aam.initPrompt),
-    UserMessage.from("allocKont(s, App(f, g), Map(), Map(), List())"),
-  )
-  println(answer)
