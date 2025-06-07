@@ -93,11 +93,11 @@ trait Gemini:
   |type Env = Map[String, BAddr]
   |case class BAddr(x: String, instrumentation: List[Any])
   |
-  |The "BStore" field is the store mapping abstract binding addresses to sets of abstract values.
+  |The "BStore" field is the store mapping abstract binding addresses to sets of abstract values, each map is represented with ->.
   |type BStore = Map[BAddr, Set[Value]]
   |Elements in the set can be either "ℤ" for abstract integers Num() or a closure represented as "⟨lambda_expression, environment⟩".
   |
-  |The "KStore" field is the store mapping abstract binding addresses to sets of continuations.
+  |The "KStore" field is the store mapping abstract binding addresses to sets of continuations, each map is represented with ->.
   |type KStore = Map[KAddr, Set[Kont]]
   |case class KAddr(e: Expr, instrumentation: List[Any])
   |
@@ -164,6 +164,6 @@ trait Gemini:
   |Field "k" should be the number (represented as a quoted string) of context-sensitivity levels to use in the analysis.
   |Given the returned value of "k", the analysis will be k-call-context-sensitive.
   |(i.e. in code the current call expression is prepended to the history, and then the take first k call sites of the whole history).
-  |Typically, k is a small number, like 0 or 1. If you think k >= 2 is needed, please explain why in the "reason" field.
+  |Typically, field "k" is a small number, like 0 or 1. If you think k >= 2 is needed, please justify in the "reason" field.
   |
   |""".stripMargin
