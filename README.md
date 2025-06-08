@@ -27,11 +27,14 @@ x
 Neither [0CFA](examples/stack2_0cfa.pdf), [1CFA](examples/stack2_1cfa.pdf), or
 the [combination](examples/stack2_0cfa_p4f.pdf) of 0CFA and [P4F](https://dl.acm.org/doi/10.1145/2837614.2837631)
 yields a precision abstract state graph.
-Using the [combination](examples/stack2_1cfa_p4f.pdf) of 1CFA and P4F can achieve the optimal precision (identical to concrete execution).
+Using the [combination](examples/stack2_1cfa_p4f.pdf) of 1CFA and P4F can
+achieve the optimal precision (i.e., no spurious state transition, being
+identical to concrete execution).
 
-However, using [LLM as abstract address allocator](examples/stack2_gemini25_jun7.pdf)
+This project demonstrates that using [LLM as abstract address allocator](examples/stack2_gemini25_jun7.pdf)
 can achieve the optimal precision too.
-The allocation strategy is neither k-CFA nor P4F, but entirely adaptive (while still remain sound).
+The allocation strategy is neither fixed k-CFA nor P4F, but entirely adaptive
+to the program and "runtime" abstract state (while still remain sound).
 See the system prompt and conversion with LLM [here](examples/stack2_gemini25_jun7_chat.txt).
 
 ### TODO
