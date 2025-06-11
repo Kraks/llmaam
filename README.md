@@ -46,3 +46,5 @@ See the system prompt and conversion with LLM [here](examples/stack2_gemini25_ju
 - [ ] support loops
 - [ ] support mutable states
 - [ ] support call/cc
+- [ ] make use of ErrState (eg. adding a function with a number produce ErrState)
+- [ ] a Scheme parser (to handle some [benchmarks](https://github.com/TimWhiting/context-sensitive-demand-cfa/tree/main/evaluation/benchmarks))
