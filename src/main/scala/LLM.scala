@@ -15,17 +15,8 @@ import dev.langchain4j.model.chat.request.ResponseFormat
 
 import State.*
 
-trait Gemini:
-  val geminiAPI = Source.fromFile("GEMINI_AI_KEY").getLines().next()
-  val gemini = GoogleAiGeminiChatModel.builder()
-    .apiKey(geminiAPI)
-    .modelName("gemini-2.5-flash-preview-05-20")
-    //.modelName("gemini-2.0-flash")
-    .responseFormat(ResponseFormat.JSON)
-    .logRequestsAndResponses(true)
-    .build()
-
-  def llm: ChatModel = gemini
+trait LLM:
+  def llm: ChatModel
 
   def prepareBindAddrQuery(s: State, x: String, t: Time): String =
     s"""
@@ -121,7 +112,7 @@ trait Gemini:
   |  "state": State,
   |  "query-type": "BAddr" or "KAddr" or "Tick",
   |  "variable": String,                  // for BAddr only
-  |  "time": Time,                        // for both BAddr and KAddr and "Tick"
+  |  "time": Time,                        // for BAddr, KAddr, and "Tick" [ALWAYS HAVE THIS FIELD]
   |  "source-expression": Expr,           // for KAddr only
   |  "target-expression": Expr,           // for KAddr only
   |  "target-environment": Env,           // for KAddr only
@@ -167,3 +158,28 @@ trait Gemini:
   |Typically, field "k" is a small number, like 0 or 1. If you think k >= 2 is needed, please justify in the "reason" field.
   |
   |""".stripMargin
+
+
+trait Gemini extends LLM:
+  val geminiAPI = Source.fromFile("GEMINI_AI_KEY").getLines().next()
+  val gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(geminiAPI)
+    .modelName("gemini-2.5-flash-preview-05-20")
+    //.modelName("gemini-2.0-flash")
+    .responseFormat(ResponseFormat.JSON)
+    .logRequestsAndResponses(true)
+    .build()
+
+  def llm: ChatModel = gemini
+
+trait OpenAI extends LLM:
+  val openaiAPI = Source.fromFile("OPENAI_API_KEY").getLines().next()
+  val openai = OpenAiChatModel.builder()
+    .apiKey(openaiAPI)
+    .modelName(OpenAiChatModelName.GPT_4_O_MINI)
+    .responseFormat("json_object")
+    .logRequests(true)
+    .logResponses(true)
+    .build()
+
+  def llm: ChatModel = openai
