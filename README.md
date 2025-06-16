@@ -40,7 +40,8 @@ See the system prompt and conversion with LLM [here](examples/stack2_gemini25_ju
 ### TODO
 
 - [x] tweak prompt (LLMAllocator) so that the response can be reified back to Scala code
-- [ ] OpenAI, Deepseek, QWen API support
+- [x] OpenAI support
+- [ ] Deepseek, QWen API support
 - [ ] Give better prompt (eg existing strategy etc) to guide LLM make better decisions
 - [ ] support conditionals and boolean
 - [ ] support loops
