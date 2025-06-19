@@ -11,6 +11,7 @@ enum Expr:
   case App(f: Expr, arg: Expr)
   case Let(x: String, rhs: Expr, body: Expr)
   case Letrec(x: String, rhs: Expr, body: Expr)
+  case Begin(exprs: List[Expr])
 
   override def toString(): String = this match
     case Lit(n) => n.toString
@@ -21,3 +22,4 @@ enum Expr:
     case App(f, arg) => s"($f $arg)"
     case Let(x, rhs, body) => s"(let $x = $rhs in $body)"
     case Letrec(x, rhs, body) => s"(letrec $x = $rhs in $body)"
+    case Begin(exprs) => s"(begin ${exprs.mkString(", ")})"

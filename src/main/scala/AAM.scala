@@ -17,6 +17,7 @@ enum Kont:
   case KFun(lam: Expr.Lam, ρ: Env, k: KAddr)
   case KLet(x: String, ρ: Env, body: Expr, k: KAddr)
   case KLetrec(x: String, xa: BAddr, ρ: Env, body: Expr, k: KAddr)
+  case KBegin(exprs: List[Expr], k: KAddr)
 
 // Addresses
 
@@ -32,9 +33,11 @@ type Env = Map[String, BAddr]
 
 enum Value:
   case Num()
+  case UnitVal()
   case Clo(lam: Expr.Lam, ρ: Env)
   override def toString(): String = this match
     case Num() => "ℤ"
+    case UnitVal() => "()"
     case Clo(lam, ρ) => s"⟨${lam}, ${ρ}⟩"
 
 type BStore = Map[BAddr, Set[Value]]
@@ -69,7 +72,7 @@ abstract class Analyzer:
   def isAtomic(e: Expr): Boolean = e match
     case Lit(_) | Var(_) | Lam(_, _) => true
     case UnaryOp(_, _) | BinOp(_, _, _)
-        | App(_, _) | Let(_, _, _) | Letrec(_, _, _) => false
+        | App(_, _) | Let(_, _, _) | Letrec(_, _, _) | Begin(_) => false
 
   def isDone(s: State): Boolean = s match
     case EState(e, _, _, _, KHalt(), _) if isAtomic(e) => true
@@ -105,6 +108,11 @@ abstract class Analyzer:
       case VState(v, _, σᵥ, σₖ, KLetrec(x, αₓ, ρ, e, k), t) =>
         val σᵥ1 = σᵥ ⊔ Map(αₓ → Set(v))
         ("letrec-body", for { kont <- σₖ(k) } yield EState(e, ρ, σᵥ1, σₖ, kont, t))
+      case VState(v, ρ, σᵥ, σₖ, KBegin(Nil, k), t) =>
+        ("begin-done", for { kont <- σₖ(k) } yield VState(v, ρ, σᵥ, σₖ, kont, t))
+      case VState(_, ρ, σᵥ, σₖ, KBegin(exprs, k), t) =>
+        ("begin-next", for { kont <- σₖ(k) } yield EState(Begin(exprs), ρ, σᵥ, σₖ, kont, t))
+
 
   def step(s: State): (Label, Set[State]) =
     val t1 = tick(s)
@@ -143,6 +151,14 @@ abstract class Analyzer:
         val αₖ = allocKont(s, rhs, ρ1, σᵥ1, t1)
         val σₖ1 = σₖ ⊔ Map(αₖ → Set(k))
         ("letrec-rhs", EState(rhs, ρ1, σᵥ1, σₖ1, KLetrec(x, αᵥ, ρ1, body, αₖ), t1))
+      case EState(e@Begin(exprs), ρ, σᵥ, σₖ, k, t) =>
+        if exprs.isEmpty then
+          ("begin-empty", VState(UnitVal(), ρ, σᵥ, σₖ, k, t1))
+        else
+          val e1::rest = exprs
+          val α = allocKont(s, e1, ρ, σᵥ, t1)
+          val σₖ1 = σₖ ⊔ Map(α → Set(k))
+          ("begin-exp", EState(e1, ρ, σᵥ, σₖ1, KBegin(rest, α), t1))
 
   def drive(todo: List[State], seen: Set[State]): Set[State] =
     if (todo.isEmpty) seen

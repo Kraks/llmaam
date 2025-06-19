@@ -61,3 +61,44 @@ id(1) + id(2)
 */
 val binopid2 = Let("id", Lam("z", Var("z")),
   BinOp("+", App(Var("id"), Lit(1)), App(Var("id"), Lit(2))))
+
+/*
+begin
+  let x = 1 in x
+  let y = 2 in y
+  x + y
+*/
+val begin1 = Begin(List(
+  Let("x", Lit(1), Var("x")),
+  Let("y", Lit(2), Var("y")),
+  BinOp("+", Var("x"), Var("y"))
+))
+
+/*
+let id = λx. x in
+id(1) + begin
+  let x = id(1) in x
+  let y = id(2) in y
+end
+ */
+val begin2 = Let("id", Lam("x", Var("x")),
+  BinOp("+",
+    App(Var("id"), Lit(1)),
+    Begin(List(
+      Let("x", App(Var("id"), Lit(1)), Var("x")),
+      Let("y", App(Var("id"), Lit(2)), Var("y"))
+    ))
+  )
+)
+
+/*
+let id = λx. x in
+id(1) + begin
+end
+ */
+val beginnil = Let("id", Lam("x", Var("x")),
+  BinOp("+",
+    App(Var("id"), Lit(1)),
+    Begin(List())
+  )
+)

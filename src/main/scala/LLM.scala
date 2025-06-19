@@ -73,6 +73,7 @@ trait LLM:
   |  case App(f: Expr, arg: Expr)
   |  case Let(x: String, rhs: Expr, body: Expr)
   |  case Letrec(x: String, rhs: Expr, body: Expr)
+  |  case Begin(exprs: List[Expr])
   |The input program is already renamed so that variable names are unique.
   |
   |The "Value" of "State" field is the value being evaluated, which is defined by the following algebraic data type:
@@ -102,6 +103,7 @@ trait LLM:
   |  case KFun(lam: Expr.Lam, ρ: Env, k: KAddr)
   |  case KLet(x: String, ρ: Env, body: Expr, k: KAddr)
   |  case KLetrec(x: String, xa: BAddr, ρ: Env, body: Expr, k: KAddr)
+  |  case KBegin(exprs: List[Expr], k: KAddr)
   |
   |The "Time" field is a list of program call sites expression that represent the history of
   |calls leading to the current state (context sensitivity).

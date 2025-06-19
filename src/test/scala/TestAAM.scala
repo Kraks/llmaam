@@ -37,6 +37,16 @@ class TestAAM extends FunSuite {
   test("omega2"):
     testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.omega2, "omega2_0cfa")
 
+  test("begin1"):
+    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.begin1, "begin1_0cfa")
+
+  test("begin2"):
+    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.begin2, "begin2_0cfa")
+
+  // XXX (ZZ): how to handle UnitVal() + Num()?
+  // test("beginnil"):
+  //   testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.beginnil, "beginnil_0cfa")
+
   /* comparing allocation strategies */
 
   // stack
@@ -99,4 +109,11 @@ class TestLLM extends FunSuite {
       .build()
     val answer = model.chat("Say 'Hello World for Scala 3!'");
     println(answer)
+}
+
+class TestSyntax extends FunSuite {
+  test("syntax - begin"):
+    println(benchmarks.begin1)
+    println(benchmarks.begin2)
+    println(benchmarks.beginnil)
 }
