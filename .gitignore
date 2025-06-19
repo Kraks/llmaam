@@ -1,0 +1,7 @@
+.metals/
+.vscode/
+GEMINI_AI_KEY
+OPENAI_API_KEY
+project/target/
+target/
+result/
