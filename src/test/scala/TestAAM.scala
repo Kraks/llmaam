@@ -40,12 +40,11 @@ class TestAAM extends FunSuite {
   test("begin1"):
     testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.begin1, "begin1_0cfa")
 
-  test("begin2"):
-    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.begin2, "begin2_0cfa")
+  test("beginscope"):
+    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.beginscope, "beginscope_0cfa")
 
-  // XXX (ZZ): how to handle UnitVal() + Num()?
-  // test("beginnil"):
-  //   testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.beginnil, "beginnil_0cfa")
+  test("beginnil"):
+    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.beginnil, "beginnil_0cfa")
 
   /* comparing allocation strategies */
 
@@ -114,6 +113,6 @@ class TestLLM extends FunSuite {
 class TestSyntax extends FunSuite {
   test("syntax - begin"):
     println(benchmarks.begin1)
-    println(benchmarks.begin2)
+    println(benchmarks.beginscope)
     println(benchmarks.beginnil)
 }

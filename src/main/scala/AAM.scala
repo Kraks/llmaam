@@ -17,7 +17,7 @@ enum Kont:
   case KFun(lam: Expr.Lam, ρ: Env, k: KAddr)
   case KLet(x: String, ρ: Env, body: Expr, k: KAddr)
   case KLetrec(x: String, xa: BAddr, ρ: Env, body: Expr, k: KAddr)
-  case KBegin(exprs: List[Expr], k: KAddr)
+  case KBegin(exprs: List[Expr], ρ: Env, k: KAddr)
 
 // Addresses
 
@@ -33,11 +33,9 @@ type Env = Map[String, BAddr]
 
 enum Value:
   case Num()
-  case UnitVal()
   case Clo(lam: Expr.Lam, ρ: Env)
   override def toString(): String = this match
     case Num() => "ℤ"
-    case UnitVal() => "()"
     case Clo(lam, ρ) => s"⟨${lam}, ${ρ}⟩"
 
 type BStore = Map[BAddr, Set[Value]]
@@ -108,9 +106,9 @@ abstract class Analyzer:
       case VState(v, _, σᵥ, σₖ, KLetrec(x, αₓ, ρ, e, k), t) =>
         val σᵥ1 = σᵥ ⊔ Map(αₓ → Set(v))
         ("letrec-body", for { kont <- σₖ(k) } yield EState(e, ρ, σᵥ1, σₖ, kont, t))
-      case VState(v, ρ, σᵥ, σₖ, KBegin(Nil, k), t) =>
+      case VState(v, _, σᵥ, σₖ, KBegin(Nil, ρ, k), t) =>
         ("begin-done", for { kont <- σₖ(k) } yield VState(v, ρ, σᵥ, σₖ, kont, t))
-      case VState(_, ρ, σᵥ, σₖ, KBegin(exprs, k), t) =>
+      case VState(_, _, σᵥ, σₖ, KBegin(exprs, ρ, k), t) =>
         ("begin-next", for { kont <- σₖ(k) } yield EState(Begin(exprs), ρ, σᵥ, σₖ, kont, t))
 
 
@@ -123,7 +121,11 @@ abstract class Analyzer:
       case EState(Lit(_), ρ, σᵥ, σₖ, k, t) =>
         ("lit", VState(Num(), ρ, σᵥ, σₖ, k, t1))
       case EState(Var(x), ρ, σᵥ, σₖ, k, t) =>
-        ("var", σᵥ(ρ(x)).map { VState(_, ρ, σᵥ, σₖ, k, t1) })
+        ρ.get(x) match
+          case Some(α) =>
+            ("var", σᵥ(α).map { VState(_, ρ, σᵥ, σₖ, k, t1) })
+          case None =>
+            ("var-unbound", ErrState())
       case EState(Lam(x, e), ρ, σᵥ, σₖ, k, t) =>
         ("lam", VState(Clo(Lam(x, e), ρ), ρ, σᵥ, σₖ, k, t1))
       // push continuation to KStore
@@ -152,13 +154,13 @@ abstract class Analyzer:
         val σₖ1 = σₖ ⊔ Map(αₖ → Set(k))
         ("letrec-rhs", EState(rhs, ρ1, σᵥ1, σₖ1, KLetrec(x, αᵥ, ρ1, body, αₖ), t1))
       case EState(e@Begin(exprs), ρ, σᵥ, σₖ, k, t) =>
-        if exprs.isEmpty then
-          ("begin-empty", VState(UnitVal(), ρ, σᵥ, σₖ, k, t1))
-        else
-          val e1::rest = exprs
-          val α = allocKont(s, e1, ρ, σᵥ, t1)
-          val σₖ1 = σₖ ⊔ Map(α → Set(k))
-          ("begin-exp", EState(e1, ρ, σᵥ, σₖ1, KBegin(rest, α), t1))
+        exprs match
+          case e1::rest =>
+            val α = allocKont(s, e1, ρ, σᵥ, t1)
+            val σₖ1 = σₖ ⊔ Map(α → Set(k))
+            ("begin-exp", EState(e1, ρ, σᵥ, σₖ1, KBegin(rest, ρ, α), t1))
+          case Nil =>
+            ("begin-empty", ErrState()) // empty begin is an error
 
   def drive(todo: List[State], seen: Set[State]): Set[State] =
     if (todo.isEmpty) seen
