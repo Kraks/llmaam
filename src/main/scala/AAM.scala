@@ -18,6 +18,7 @@ enum Kont:
   case KLet(x: String, ρ: Env, body: Expr, k: KAddr)
   case KLetrec(x: String, xa: BAddr, ρ: Env, body: Expr, k: KAddr)
   case KBegin(exprs: List[Expr], ρ: Env, k: KAddr)
+  case KIfBrh(thn: Expr, els: Expr, ρ: Env, k: KAddr)
 
 // Addresses
 
@@ -70,7 +71,8 @@ abstract class Analyzer:
   def isAtomic(e: Expr): Boolean = e match
     case Lit(_) | Var(_) | Lam(_, _) => true
     case UnaryOp(_, _) | BinOp(_, _, _)
-        | App(_, _) | Let(_, _, _) | Letrec(_, _, _) | Begin(_) => false
+        | App(_, _) | Let(_, _, _) | Letrec(_, _, _)
+        | Begin(_) | If(_, _, _) => false
 
   def isDone(s: State): Boolean = s match
     case EState(e, _, _, _, KHalt(), _) if isAtomic(e) => true
@@ -110,6 +112,12 @@ abstract class Analyzer:
         ("begin-done", for { kont <- σₖ(k) } yield VState(v, ρ, σᵥ, σₖ, kont, t))
       case VState(_, _, σᵥ, σₖ, KBegin(exprs, ρ, k), t) =>
         ("begin-next", for { kont <- σₖ(k) } yield EState(Begin(exprs), ρ, σᵥ, σₖ, kont, t))
+      case VState(_, _, σᵥ, σₖ, KIfBrh(thn, els, ρ, k), t) =>
+        ("if-branch",
+          for
+            kont   <- σₖ(k)
+            branch <- List(thn, els)
+          yield EState(branch, ρ, σᵥ, σₖ, kont, t))
 
 
   def step(s: State): (Label, Set[State]) =
@@ -161,6 +169,10 @@ abstract class Analyzer:
             ("begin-exp", EState(e1, ρ, σᵥ, σₖ1, KBegin(rest, ρ, α), t1))
           case Nil =>
             ("begin-empty", ErrState()) // empty begin is an error
+      case EState(e@If(cond, thn, els), ρ, σᵥ, σₖ, k, t) =>
+        val α = allocKont(s, cond, ρ, σᵥ, t1)
+        val σₖ1 = σₖ ⊔ Map(α → Set(k))
+        ("if-cond", EState(cond, ρ, σᵥ, σₖ1, KIfBrh(thn, els, ρ, α), t1))
 
   def drive(todo: List[State], seen: Set[State]): Set[State] =
     if (todo.isEmpty) seen

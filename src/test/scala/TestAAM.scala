@@ -8,6 +8,7 @@ import dev.langchain4j.model.googleai.*
 import dev.langchain4j.model.openai.*
 
 def testAnalyzer[T <: Analyzer](analyzer: T, program: Expr, name: String): Unit =
+  println(s"Running analysis for ${program}...")
   val states = analyzer.run(program)
   println(s"Analysis summary [${name}]: #State: ${states.size}, #Edges: ${analyzer.transitions.size}")
   val transitionStates = analyzer.transitions.foldLeft(Set[State]()) {
@@ -45,6 +46,9 @@ class TestAAM extends FunSuite {
 
   test("beginnil"):
     testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.beginnil, "beginnil_0cfa")
+
+  test("if1"):
+    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.if1, "if1_0cfa")
 
   /* comparing allocation strategies */
 
@@ -97,6 +101,17 @@ class TestAAM extends FunSuite {
 
   test("binopid - aac"):
     testAnalyzer(new Analyzer with ZeroCFA with AACContAlloc, benchmarks.binopid, "binopid_0cfa_aac")
+
+  // shadow
+
+  test("shadowapp"):
+    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.shadowapp, "shadowapp_0cfa")
+
+  test("shadowapp - kcfa"):
+    testAnalyzer(new Analyzer with KCFA(1) with SrcContAlloc, benchmarks.shadowapp, "shadowapp_2cfa")
+
+  test("shadowbinop"):
+    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.shadowbinop, "shadowbinop_0cfa")
 }
 
 class TestLLM extends FunSuite {
@@ -111,8 +126,9 @@ class TestLLM extends FunSuite {
 }
 
 class TestSyntax extends FunSuite {
-  test("syntax - begin"):
+  test("syntax"):
     println(benchmarks.begin1)
     println(benchmarks.beginscope)
     println(benchmarks.beginnil)
+    println(benchmarks.if1)
 }

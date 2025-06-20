@@ -102,3 +102,29 @@ val beginnil = Let("id", Lam("x", Var("x")),
     Begin(List())
   )
 )
+
+/*
+if 1 > 0 then 2 + 3 else 4 - 5
+ */
+val if1 = If(
+  BinOp(">", Lit(1), Lit(0)),
+  BinOp("+", Lit(2), Lit(3)),
+  BinOp("-", Lit(4), Lit(5))
+)
+
+/*
+(λy. let x = 2 in x + y) (let x = 1 in x)
+ */
+val shadowapp = App(
+  Lam("y", Let("x", Lit(2), BinOp("+", Var("x"), Var("y")))),
+  Let("x", Lit(1), Var("x"))
+)
+
+/*
+(let x = 2 in x) + (let x = 1 in x)
+ */
+val shadowbinop = BinOp(
+  "+",
+  Let("x", Lit(2), Var("x")),
+  Let("x", Lit(1), Var("x"))
+)
