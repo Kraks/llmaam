@@ -43,10 +43,24 @@ type BStore = Map[BAddr, Set[Value]]
 type KStore = Map[KAddr, Set[Kont]]
 type Time = List[Expr]
 
-enum State:
+enum State derives CanEqual:
   case EState(e: Expr, ρ: Env, σᵥ: BStore, σₖ: KStore, k: Kont, t: Time)
   case VState(v: Value, ρ: Env, σᵥ: BStore, σₖ: KStore, k: Kont, t: Time)
   case ErrState()
+
+  // store widening
+  override def equals(other: Any): Boolean = (this, other) match
+    case (EState(e1, ρ1, _, _, k1, t1), EState(e2, ρ2, _, _, k2, t2)) =>
+      e1 == e2 && ρ1 == ρ2 && k1 == k2 && t1 == t2
+    case (VState(v1, ρ1, _, _, k1, t1), VState(v2, ρ2, _, _, k2, t2)) =>
+      v1 == v2 && ρ1 == ρ2 && k1 == k2 && t1 == t2
+    case (ErrState(), ErrState()) => true
+    case _                        => false
+
+  override def hashCode: Int = this match
+    case EState(e, ρ, _, _, k, t) => (0, e, ρ, k, t).##
+    case VState(v, ρ, _, _, k, t) => (1, v, ρ, k, t).##
+    case ErrState()               => 2
 
 given Conversion[State, Set[State]] with
   def apply(s: State): Set[State] = Set(s)
@@ -175,16 +189,39 @@ abstract class Analyzer:
         ("if-cond", EState(cond, ρ, σᵥ, σₖ1, KIfBrh(thn, els, ρ, α), t1))
 
   def drive(todo: List[State], seen: Set[State]): Set[State] =
-    if (todo.isEmpty) seen
+    if (todo.isEmpty) then seen
     else
       val s::rest = todo
-      if seen(s) then drive(rest, seen)
-      else if isDone(s) then drive(rest, seen + s)
-      else {
-        val (lab, succs) = step(s)
-        transitions.append((s, lab, succs))
-        drive(succs.toList ++ rest, seen + s)
-      }
+      seen.find(_ == s) match
+        case Some(old) =>
+          // already seen this state, check store widening
+          val joined = (old, s) match
+            case (EState(e, ρ, σᵥ1, σₖ1, k, t), EState(_, _, σᵥ2, σₖ2, _, _)) =>
+              EState(e, ρ, σᵥ1 ⊔ σᵥ2, σₖ1 ⊔ σₖ2, k, t)
+            case (VState(v, ρ, σᵥ1, σₖ1, k, t), VState(_, _, σᵥ2, σₖ2, _, _)) =>
+              VState(v, ρ, σᵥ1 ⊔ σᵥ2, σₖ1 ⊔ σₖ2, k, t)
+            case (ErrState(), ErrState()) => ErrState()
+          val changed = (joined, old) match
+            case (EState(_, _, σᵥ1, σₖ1, _, _), EState(_, _, σᵥ2, σₖ2, _, _)) =>
+              σᵥ1 != σᵥ2 || σₖ1 != σₖ2
+            case (VState(_, _, σᵥ1, σₖ1, _, _), VState(_, _, σᵥ2, σₖ2, _, _)) =>
+              σᵥ1 != σᵥ2 || σₖ1 != σₖ2
+            case (ErrState(), ErrState()) => false
+          if changed then
+            val seen2 = seen - old + joined
+            if isDone(joined) then drive(rest, seen2)
+            else
+              val (lab, succs) = step(joined)
+              transitions.append((joined, lab, succs))
+              drive(succs.toList ++ rest, seen2)
+          else
+            drive(rest, seen)
+        case None =>
+          if isDone(s) then drive(rest, seen + s)
+          else
+            val (lab, succs) = step(s)
+            transitions.append((s, lab, succs))
+            drive(succs.toList ++ rest, seen + s)
 
   def inject(e: Expr): State = EState(e, Map(), Map(), Map(), KHalt(), List())
 
@@ -209,12 +246,16 @@ abstract class Analyzer:
     writer.println("digraph G {")
     writer.println("""  node [fontname = "Courier New"];""")
     writer.println("""  edge [fontname = "helvetica"];""")
+    // avoid duplicated edges
+    var edges = Set[(Int, Int, String)]()
     // print all transitions
     for ((s, lab, succs) <- transitions) {
       add(s)
       for (s2 <- succs) {
         add(s2)
-        writer.println(s"""  ${numbering(s)} -> ${numbering(s2)} [label="${lab}"];""")
+        if !edges.contains((numbering(s), numbering(s2), lab)) then
+          edges += ((numbering(s), numbering(s2), lab))
+          writer.println(s"""  ${numbering(s)} -> ${numbering(s2)} [label="${lab}"];""")
       }
     }
     // print node labels

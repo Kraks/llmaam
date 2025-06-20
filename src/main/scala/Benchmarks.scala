@@ -113,6 +113,20 @@ val if1 = If(
 )
 
 /*
+begin
+  if 1 > 0 then 2 + 3 else 4 - 5
+  1 + 2
+*/
+val beginif = Begin(List(
+  If(
+    BinOp(">", Lit(1), Lit(0)),
+    BinOp("+", Lit(2), Lit(3)),
+    BinOp("-", Lit(4), Lit(5))
+  ),
+  BinOp("+", Lit(1), Lit(2))
+))
+
+/*
 (λy. let x = 2 in x + y) (let x = 1 in x)
  */
 val shadowapp = App(
