@@ -84,6 +84,7 @@ begin
   let x = 1 in x
   let y = 2 in y
   x + y
+end
 */
 val beginscope = Begin(List(
   Let("x", Lit(1), Var("x")),
@@ -116,6 +117,20 @@ val iferr = If(
   BinOp(">", Lit(1), Lit(true)), // 1 cannot be compared to true
   BinOp("+", Lit(2), Lit(3)),
   BinOp("-", Lit(4), Lit(5))
+)
+
+/*
+let i = 0 in
+while i < 3 do
+  4 + 5
+ */
+val while1 = Let("i", Lit(0),
+  Let("one", Lit(1),
+    While(
+      BinOp("<", Var("i"), Lit(3)),
+      BinOp("+", Lit(4), Lit(5))
+    )
+  )
 )
 
 /*

@@ -53,6 +53,9 @@ class TestAAM extends FunSuite {
   test("iferr"):
     testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.iferr, "iferr_0cfa")
 
+  test("while1"):
+    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.while1, "while1_0cfa")
+
   /* comparing allocation strategies */
 
   // stack
@@ -134,4 +137,5 @@ class TestSyntax extends FunSuite {
     println(benchmarks.beginscope)
     println(benchmarks.beginnil)
     println(benchmarks.if1)
+    println(benchmarks.while1)
 }

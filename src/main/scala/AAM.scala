@@ -20,6 +20,8 @@ enum Kont:
   case KLetrec(x: String, xa: BAddr, ρ: Env, body: Expr, k: KAddr)
   case KBegin(exprs: List[Expr], ρ: Env, k: KAddr)
   case KIfBrh(thn: Expr, els: Expr, ρ: Env, k: KAddr)
+  case KWhileCnd(cond: Expr, body: Expr, ρ: Env, k: KAddr)
+  case KWhileBdy(cond: Expr, body: Expr, ρ: Env, k: KAddr)
 
 // The numerical abstract domain can be easily extended to
 // non-relational ones, but not obvious to extend to relational ones.
@@ -27,10 +29,12 @@ enum Kont:
 enum Value:
   case Num()
   case Bool()
+  case UnitVal()
   case Clo(lam: Expr.Lam, ρ: Env)
   override def toString(): String = this match
     case Num() => "ℤ"
     case Bool() => "𝔹"
+    case UnitVal() => "()"
     case Clo(lam, ρ) => s"⟨${lam}, ${ρ}⟩"
 
 // Operator: extend this object to support more complex abstract domains
@@ -105,7 +109,7 @@ abstract class Analyzer:
     case Lit(_) | Var(_) | Lam(_, _) => true
     case UnaryOp(_, _) | BinOp(_, _, _)
         | App(_, _) | Let(_, _, _) | Letrec(_, _, _)
-        | Begin(_) | If(_, _, _) => false
+        | Begin(_) | If(_, _, _) | While(_, _) => false
 
   def isDone(s: State): Boolean = s match
     case EState(e, _, _, _, KHalt(), _) if isAtomic(e) => true
@@ -149,6 +153,7 @@ abstract class Analyzer:
       case VState(v, _, σᵥ, σₖ, KLetrec(x, αₓ, ρ, e, k), t) =>
         val σᵥ1 = σᵥ ⊔ Map(αₓ → Set(v))
         ("letrec-body", for { kont <- σₖ(k) } yield EState(e, ρ, σᵥ1, σₖ, kont, t))
+      // KBegin
       case VState(v, _, σᵥ, σₖ, KBegin(Nil, ρ, k), t) =>
         ("begin-done", for { kont <- σₖ(k) } yield VState(v, ρ, σᵥ, σₖ, kont, t))
       case VState(_, _, σᵥ, σₖ, KBegin(exprs, ρ, k), t) =>
@@ -160,7 +165,18 @@ abstract class Analyzer:
             kont   <- σₖ(k)
             branch <- List(thn, els)
           yield EState(branch, ρ, σᵥ, σₖ, kont, t))
-
+      // KWhileCnd expects the result is a Bool
+      case VState(Bool(), _, σᵥ, σₖ, KWhileCnd(cond, body, ρ, k), t) =>
+        ("while-branch",
+          for
+            kont <- σₖ(k)
+            state <- List(
+              VState(UnitVal(), ρ, σᵥ, σₖ, kont, t), // cond false
+              EState(body, ρ, σᵥ, σₖ, KWhileBdy(cond, body, ρ, k), t) // cond true
+            )
+          yield state)
+      case VState(_, _, σᵥ, σₖ, KWhileBdy(cond, body, ρ, k), t) =>
+        ("while-continue", EState(cond, ρ, σᵥ, σₖ, KWhileCnd(cond, body, ρ, k), t))
 
   def step(s: State): (Label, Set[State]) =
     val t1 = tick(s)
@@ -212,11 +228,15 @@ abstract class Analyzer:
             val σₖ1 = σₖ ⊔ Map(α → Set(k))
             ("begin-exp", EState(e1, ρ, σᵥ, σₖ1, KBegin(rest, ρ, α), t1))
           case Nil =>
-            ("begin-empty", ErrState()) // empty begin is an error
+            ("begin-empty", VState(UnitVal(), ρ, σᵥ, σₖ, k, t1))
       case EState(e@If(cond, thn, els), ρ, σᵥ, σₖ, k, t) =>
         val α = allocKont(s, cond, ρ, σᵥ, t1)
         val σₖ1 = σₖ ⊔ Map(α → Set(k))
         ("if-cond", EState(cond, ρ, σᵥ, σₖ1, KIfBrh(thn, els, ρ, α), t1))
+      case EState(e@While(cond, body), ρ, σᵥ, σₖ, k, t) =>
+        val α = allocKont(s, cond, ρ, σᵥ, t1)
+        val σₖ1 = σₖ ⊔ Map(α → Set(k))
+        ("while-cond", EState(cond, ρ, σᵥ, σₖ1, KWhileCnd(cond, body, ρ, α), t1))
 
   def drive(todo: List[State], seen: Set[State]): Set[State] =
     if (todo.isEmpty) seen
