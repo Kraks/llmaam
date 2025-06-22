@@ -19,7 +19,7 @@ enum Kont:
   case KLet(x: String, ρ: Env, body: Expr, k: KAddr)
   case KLetrec(x: String, xa: BAddr, ρ: Env, body: Expr, k: KAddr)
   case KBegin(exprs: List[Expr], ρ: Env, k: KAddr)
-  case KIfBrh(thn: Expr, els: Expr, ρ: Env, k: KAddr)
+  case KIf(thn: Expr, els: Expr, ρ: Env, k: KAddr)
   case KWhileCnd(cond: Expr, body: Expr, ρ: Env, k: KAddr)
   case KWhileBdy(cond: Expr, body: Expr, ρ: Env, k: KAddr)
 
@@ -37,36 +37,25 @@ enum Value:
     case UnitVal() => "()"
     case Clo(lam, ρ) => s"⟨${lam}, ${ρ}⟩"
 
-// Operator: extend this object to support more complex abstract domains
-
 import Value.*
 
-object OpInfo:
-  val arithBin  = Set("+", "-", "*", "/", "%")
-  val arithUn   = Set("+", "-")
-  val relBin    = Set(">", "<", ">=", "<=", "==", "!=")
-  val logicBin  = Set("&", "|")
-  val logicUn   = Set("!")
+val arithBin  = Set("+", "-", "*", "/", "%")
+val arithUn   = Set("+", "-")
+val relBin    = Set(">", "<", ">=", "<=", "==", "!=")
+val logicBin  = Set("&", "|")
+val logicUn   = Set("!")
 
-  // quick queries
-  inline def isUnaryArith(op: String) = arithUn.contains(op)
-  inline def isUnaryLogic(op: String) = logicUn.contains(op)
+def evalUnaryOp(op: String, v: Value): Option[Value] = (op, v) match
+  case (o, Num()) if arithUn(o) => Some(Num())
+  case (o, Bool()) if logicUn(o) => Some(Bool())
+  case _ => None
 
-  inline def isBinArith(op: String)  = arithBin.contains(op)
-  inline def isBinRel(op: String)    = relBin.contains(op)
-  inline def isBinLogic(op: String)  = logicBin.contains(op)
-
-  def unaryResult(op: String, v: Value): Option[Value] = (op, v) match
-    case (o, Num()) if isUnaryArith(o) => Some(Num())
-    case (o, Bool()) if isUnaryLogic(o) => Some(Bool())
+def evalBinOp(op: String, v1: Value, v2: Value): Option[Value] =
+  (v1, v2) match
+    case (Num(), Num()) if arithBin(op) => Some(Num())
+    case (Num(), Num()) if relBin(op) => Some(Bool())
+    case (Bool(), Bool()) if logicBin(op) => Some(Bool())
     case _ => None
-
-  def binaryResult(op: String, v1: Value, v2: Value): Option[Value] =
-    (v1, v2) match
-      case (Num(), Num()) if isBinArith(op) => Some(Num())
-      case (Num(), Num()) if isBinRel(op) => Some(Bool())
-      case (Bool(), Bool()) if isBinLogic(op) => Some(Bool())
-      case _ => None
 
 // Addresses
 
@@ -130,7 +119,7 @@ abstract class Analyzer:
         ("app-red", for { kont <- σₖ(k) } yield EState(e, ρ1, σᵥ1, σₖ, kont, t))
       // KUnaryOp expects the result is a Num/Bool
       case VState(v, _, σᵥ, σₖ, KUnaryOp(op, ρ, k), t) =>
-        OpInfo.unaryResult(op, v) match
+        evalUnaryOp(op, v) match
           case Some(res) =>
             ("op1-red", for { kont <- σₖ(k) } yield VState(res, ρ, σᵥ, σₖ, kont, t))
           case None =>
@@ -140,7 +129,7 @@ abstract class Analyzer:
         ("op2-rhs", EState(rhs, ρ, σᵥ, σₖ, KBinOpL(op, v, k), t))
       // KBinOpL (arithmetic/logic) can be applied to Num/Bool
       case VState(vᵣ, _, σᵥ, σₖ, KBinOpL(op, vₗ, k), t) =>
-        OpInfo.binaryResult(op, vₗ, vᵣ) match
+        evalBinOp(op, vₗ, vᵣ) match
           case Some(res) =>
             ("op2-red", for { kont <- σₖ(k) } yield VState(res, Map(), σᵥ, σₖ, kont, t))
           case None =>
@@ -158,8 +147,8 @@ abstract class Analyzer:
         ("begin-done", for { kont <- σₖ(k) } yield VState(v, ρ, σᵥ, σₖ, kont, t))
       case VState(_, _, σᵥ, σₖ, KBegin(exprs, ρ, k), t) =>
         ("begin-next", for { kont <- σₖ(k) } yield EState(Begin(exprs), ρ, σᵥ, σₖ, kont, t))
-      // KIfBrh expects the result is a Bool
-      case VState(Bool(), _, σᵥ, σₖ, KIfBrh(thn, els, ρ, k), t) =>
+      // KIf expects the result is a Bool
+      case VState(Bool(), _, σᵥ, σₖ, KIf(thn, els, ρ, k), t) =>
         ("if-branch",
           for
             kont   <- σₖ(k)
@@ -232,7 +221,7 @@ abstract class Analyzer:
       case EState(e@If(cond, thn, els), ρ, σᵥ, σₖ, k, t) =>
         val α = allocKont(s, cond, ρ, σᵥ, t1)
         val σₖ1 = σₖ ⊔ Map(α → Set(k))
-        ("if-cond", EState(cond, ρ, σᵥ, σₖ1, KIfBrh(thn, els, ρ, α), t1))
+        ("if-cond", EState(cond, ρ, σᵥ, σₖ1, KIf(thn, els, ρ, α), t1))
       case EState(e@While(cond, body), ρ, σᵥ, σₖ, k, t) =>
         val α = allocKont(s, cond, ρ, σᵥ, t1)
         val σₖ1 = σₖ ⊔ Map(α → Set(k))
