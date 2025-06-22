@@ -50,6 +50,9 @@ class TestAAM extends FunSuite {
   test("if1"):
     testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.if1, "if1_0cfa")
 
+  test("iferr"):
+    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.iferr, "iferr_0cfa")
+
   /* comparing allocation strategies */
 
   // stack

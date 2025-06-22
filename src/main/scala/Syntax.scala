@@ -3,7 +3,7 @@ package llmaam.syntax
 // Syntax
 
 enum Expr:
-  case Lit(n: Int)
+  case Lit(n: Int | Boolean)
   case UnaryOp(op: String, arg: Expr)
   case BinOp(op: String, lhs: Expr, rhs: Expr)
   case Var(x: String)

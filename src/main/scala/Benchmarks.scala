@@ -112,6 +112,12 @@ val if1 = If(
   BinOp("-", Lit(4), Lit(5))
 )
 
+val iferr = If(
+  BinOp(">", Lit(1), Lit(true)), // 1 cannot be compared to true
+  BinOp("+", Lit(2), Lit(3)),
+  BinOp("-", Lit(4), Lit(5))
+)
+
 /*
 (λy. let x = 2 in x + y) (let x = 1 in x)
  */
