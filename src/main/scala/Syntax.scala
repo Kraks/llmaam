@@ -14,6 +14,7 @@ enum Expr:
   case Begin(exprs: List[Expr])
   case If(cond: Expr, thn: Expr, els: Expr)
   case While(cond: Expr, body: Expr)
+  case SetVar(x: String, rhs: Expr)
 
   override def toString(): String = this match
     case Lit(n) => n.toString
@@ -27,3 +28,4 @@ enum Expr:
     case Begin(exprs) => s"(begin ${exprs.mkString(", ")})"
     case If(cond, thn, els) => s"(if $cond then $thn else $els)"
     case While(cond, body) => s"(while $cond do $body)"
+    case SetVar(x, rhs) => s"(set! $x = $rhs)"

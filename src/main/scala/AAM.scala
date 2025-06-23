@@ -22,6 +22,7 @@ enum Kont:
   case KIf(thn: Expr, els: Expr, ρ: Env, k: KAddr)
   case KWhileCnd(cond: Expr, body: Expr, ρ: Env, k: KAddr)
   case KWhileBdy(cond: Expr, body: Expr, ρ: Env, k: KAddr)
+  case KSet(x: String, rhs: Expr, ρ: Env, k: KAddr)
 
 // The numerical abstract domain can be easily extended to
 // non-relational ones, but not obvious to extend to relational ones.
@@ -98,7 +99,8 @@ abstract class Analyzer:
     case Lit(_) | Var(_) | Lam(_, _) => true
     case UnaryOp(_, _) | BinOp(_, _, _)
         | App(_, _) | Let(_, _, _) | Letrec(_, _, _)
-        | Begin(_) | If(_, _, _) | While(_, _) => false
+        | Begin(_) | If(_, _, _) | While(_, _)
+        | SetVar(_, _) => false
 
   def isDone(s: State): Boolean = s match
     case EState(e, _, _, _, KHalt(), _) if isAtomic(e) => true
@@ -139,6 +141,14 @@ abstract class Analyzer:
         val ρ1 = ρ + (x → α)
         val σᵥ1 = σᵥ ⊔ Map(α → Set(v))
         ("let-body", for { kont <- σₖ(k) } yield EState(e, ρ1, σᵥ1, σₖ, kont, t))
+      case VState(v, _, σᵥ, σₖ, KSet(x, rhs, ρ, k), t) =>
+        ρ.get(x) match
+          case Some(α) =>
+            val ρ1 = ρ + (x → α)
+            val σᵥ1 = σᵥ ⊔ Map(α → Set(v))
+            ("set-body", for { kont <- σₖ(k) } yield VState(UnitVal(), ρ, σᵥ1, σₖ, kont, t))
+          case None =>
+            ("set-unbound", ErrState())
       case VState(v, _, σᵥ, σₖ, KLetrec(x, αₓ, ρ, e, k), t) =>
         val σᵥ1 = σᵥ ⊔ Map(αₓ → Set(v))
         ("letrec-body", for { kont <- σₖ(k) } yield EState(e, ρ, σᵥ1, σₖ, kont, t))
@@ -226,6 +236,10 @@ abstract class Analyzer:
         val α = allocKont(s, cond, ρ, σᵥ, t1)
         val σₖ1 = σₖ ⊔ Map(α → Set(k))
         ("while-cond", EState(cond, ρ, σᵥ, σₖ1, KWhileCnd(cond, body, ρ, α), t1))
+      case EState(e@SetVar(x, rhs), ρ, σᵥ, σₖ, k, t) =>
+        val α = allocKont(s, rhs, ρ, σᵥ, t1)
+        val σₖ1 = σₖ ⊔ Map(α → Set(k))
+        ("set-rhs", EState(rhs, ρ, σᵥ, σₖ1, KSet(x, rhs, ρ, α), t1))
 
   def drive(todo: List[State], seen: Set[State]): Set[State] =
     if (todo.isEmpty) seen

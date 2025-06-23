@@ -134,6 +134,28 @@ val while1 = Let("i", Lit(0),
 )
 
 /*
+let i = 0 in
+let one = 1 in begin
+  while i < 3 do
+    set! i (i + one)
+  3
+end
+ */
+val while2 = Let("i", Lit(0),
+  Let("one", Lit(1),
+    Begin(
+      List(
+        While(
+          BinOp("<", Var("i"), Lit(3)),
+          SetVar("i", BinOp("+", Var("i"), Var("one")))
+        ),
+        Lit(3)
+      )
+    )
+  )
+)
+
+/*
 (λy. let x = 2 in x + y) (let x = 1 in x)
  */
 val shadowapp = App(
