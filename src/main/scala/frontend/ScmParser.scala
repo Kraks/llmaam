@@ -178,128 +178,129 @@ object AlphaRenamer {
 trait SchemeParserTrait extends SchemeTokenParser {
   def id[T](x: T) = x
 
-  implicit def variable: Parser[Var] = IDENT ^^ { Var(_) }
+  def variable: Parser[Var] = IDENT ^^ { Var(_) }
 
-  implicit def app: Parser[App] = LPAREN ~> expr ~ expr.* <~ RPAREN ^^ {
+  def app: Parser[App] = LPAREN ~> expr ~ expr.* <~ RPAREN ^^ {
     case e ~ param => App(e, param)
   }
 
-  implicit def lam: Parser[Lam] = LPAREN ~> LAMBDA ~> (LPAREN ~> IDENT.* <~ RPAREN) ~ implicit_begin <~ RPAREN ^^ {
+  def lam: Parser[Lam] = LPAREN ~> LAMBDA ~> (LPAREN ~> IDENT.* <~ RPAREN) ~ implicit_begin <~ RPAREN ^^ {
     case args ~ body => Lam(args, body)
   }
 
-  implicit def bind: Parser[Bind] = LPAREN ~> IDENT ~ implicit_begin <~ RPAREN ^^ {
+  def bind: Parser[Bind] = LPAREN ~> IDENT ~ implicit_begin <~ RPAREN ^^ {
     case id ~ e => Bind(id, e)
   }
 
-  implicit def lets: Parser[Expr] = let | letstar | letrec | letproc
+  def lets: Parser[Expr] = let | letstar | letrec | letproc
 
-  implicit def let: Parser[App] = LPAREN ~> LET ~> (LPAREN ~> bind.+ <~ RPAREN) ~ implicit_begin <~ RPAREN ^^ {
+  def let: Parser[App] = LPAREN ~> LET ~> (LPAREN ~> bind.+ <~ RPAREN) ~ implicit_begin <~ RPAREN ^^ {
     case binds ~ body => Let(binds, body).toApp
   }
 
-  implicit def letproc: Parser[App] = LPAREN ~> LET ~> IDENT ~ (LPAREN ~> bind.+ <~ RPAREN) ~ implicit_begin <~ RPAREN ^^ {
+  def letproc: Parser[App] = LPAREN ~> LET ~> IDENT ~ (LPAREN ~> bind.+ <~ RPAREN) ~ implicit_begin <~ RPAREN ^^ {
     case ident ~ binds ~ body =>
       Lrc(List(Bind(ident, Lam(binds.map(_.x), body))), App(Var(ident), binds.map(_.e))).toApp
   }
 
-  implicit def letstar: Parser[App] = LPAREN ~> LETSTAR ~> (LPAREN ~> bind.+ <~ RPAREN) ~ implicit_begin <~ RPAREN ^^ {
+  def letstar: Parser[App] = LPAREN ~> LETSTAR ~> (LPAREN ~> bind.+ <~ RPAREN) ~ implicit_begin <~ RPAREN ^^ {
     case binds ~ body =>
       binds.dropRight(1).foldRight (Let(List(binds.last), body).toApp) { case (bd, e) => Let(List(bd), e).toApp }
   }
 
-  implicit def letrec: Parser[App] = LPAREN ~> LETREC ~> (LPAREN ~> bind.+ <~ RPAREN) ~ implicit_begin <~ RPAREN ^^ {
+  def letrec: Parser[App] = LPAREN ~> LETREC ~> (LPAREN ~> bind.+ <~ RPAREN) ~ implicit_begin <~ RPAREN ^^ {
     case binds ~ body => Lrc(binds, body).toApp
   }
-  implicit def complex: Parser[App] = floatlit ~ floatlit <~ "i" ^^ {
+
+  def complex: Parser[App] = floatlit ~ floatlit <~ "i" ^^ {
     case r ~ i => App(Var("vector"), List(r, i))
   }
 
-  implicit def intlit: Parser[IntLit] = INT10 ^^ { IntLit(_) }
-  implicit def floatlit: Parser[FloatLit] = FLOAT ^^ { FloatLit(_) }
-  implicit def boollit: Parser[BoolLit] = (TRUE | FALSE) ^^ { BoolLit(_) }
-  implicit def charlit: Parser[CharLit] = CHARLIT ^^ {
+  def intlit: Parser[IntLit] = INT10 ^^ { IntLit(_) }
+  def floatlit: Parser[FloatLit] = FLOAT ^^ { FloatLit(_) }
+  def boollit: Parser[BoolLit] = (TRUE | FALSE) ^^ { BoolLit(_) }
+  def charlit: Parser[CharLit] = CHARLIT ^^ {
     case s => CharLit(s.charAt(2))
   }
-  implicit def stringlit: Parser[App] = STRINGLIT ^^ {
+  def stringlit: Parser[App] = STRINGLIT ^^ {
     case str =>
       val elements: List[CharLit] = str.toCharArray.map(CharLit(_)).toList
       App(Var("vector"), elements.drop(1).dropRight(1))
   }
 
-  implicit def vecsugar: Parser[App] = VECLPAREN ~> expr.* <~ RPAREN ^^ {
+  def vecsugar: Parser[App] = VECLPAREN ~> expr.* <~ RPAREN ^^ {
     case elements => App(Var("vector"), elements)
   }
 
-  implicit def literals: Parser[Expr] = complex | floatlit | intlit | charlit | boollit | stringlit | vecsugar
+  def literals: Parser[Expr] = complex | floatlit | intlit | charlit | boollit | stringlit | vecsugar
 
-  implicit def ifthel: Parser[If] = LPAREN ~> IF ~> expr ~ expr ~ expr <~ RPAREN ^^ {
+  def ifthel: Parser[If] = LPAREN ~> IF ~> expr ~ expr ~ expr <~ RPAREN ^^ {
     case cond ~ thn ~ els => If(cond, thn, els)
   }
 
-  implicit def condBranch: Parser[CondBr] = LPAREN ~> expr ~ implicit_begin <~ RPAREN ^^ {
+  def condBranch: Parser[CondBr] = LPAREN ~> expr ~ implicit_begin <~ RPAREN ^^ {
     case cond ~ thn => CondBr(cond, thn)
   }
-  implicit def condElseBranch: Parser[CondBr] = LPAREN ~> ELSE ~> implicit_begin <~ RPAREN ^^ {
+  def condElseBranch: Parser[CondBr] = LPAREN ~> ELSE ~> implicit_begin <~ RPAREN ^^ {
     case thn => CondBr(BoolLit(true), thn)
   }
-  implicit def condProcBranch: Parser[CondProcBr] = LPAREN ~> expr ~ (RARROW ~> implicit_begin) <~ RPAREN ^^ {
+  def condProcBranch: Parser[CondProcBr] = LPAREN ~> expr ~ (RARROW ~> implicit_begin) <~ RPAREN ^^ {
     case cond ~ proc => CondProcBr(cond, proc)
   }
-  implicit def condBranches: Parser[CondBrTrait] = condElseBranch | condBranch | condProcBranch
-  implicit def cond: Parser[Cond] = LPAREN ~> COND ~> condBranches.* <~ RPAREN ^^ {
+  def condBranches: Parser[CondBrTrait] = condElseBranch | condBranch | condProcBranch
+  def cond: Parser[Cond] = LPAREN ~> COND ~> condBranches.* <~ RPAREN ^^ {
     case branches => Cond(branches)
   }
 
-  implicit def caseBranch: Parser[CaseBranch] = LPAREN ~> (LPAREN ~> expr.* <~ RPAREN) ~ implicit_begin <~ RPAREN ^^ {
+  def caseBranch: Parser[CaseBranch] = LPAREN ~> (LPAREN ~> expr.* <~ RPAREN) ~ implicit_begin <~ RPAREN ^^ {
     case cases ~ thn => CaseBranch(cases, thn)
   }
-  implicit def caseElseBranch: Parser[CaseBranch] = LPAREN ~> ELSE ~> implicit_begin <~ RPAREN ^^ {
+  def caseElseBranch: Parser[CaseBranch] = LPAREN ~> ELSE ~> implicit_begin <~ RPAREN ^^ {
     case thn => CaseBranch(List(), thn)
   }
-  implicit def cas: Parser[Case] = LPAREN ~> CASE ~> implicit_begin ~ (caseElseBranch | caseBranch).* <~ RPAREN ^^ {
+  def cas: Parser[Case] = LPAREN ~> CASE ~> implicit_begin ~ (caseElseBranch | caseBranch).* <~ RPAREN ^^ {
     case ev ~ branches => Case(ev, branches)
   }
 
-  implicit def dispatch: Parser[Expr] = ifthel | cond | cas
+  def dispatch: Parser[Expr] = ifthel | cond | cas
 
-  implicit def void: Parser[Void] = LPAREN ~> VOID <~ RPAREN ^^ { _ => Void() }
+  def void: Parser[Void] = LPAREN ~> VOID <~ RPAREN ^^ { _ => Void() }
 
-  implicit def define: Parser[Define] = LPAREN ~> DEF ~> IDENT ~ implicit_begin <~ RPAREN ^^ {
+  def define: Parser[Define] = LPAREN ~> DEF ~> IDENT ~ implicit_begin <~ RPAREN ^^ {
     case id ~ e => Define(id, e)
   }
 
-  implicit def definefunc: Parser[Define] = LPAREN ~> DEF ~> (LPAREN ~> IDENT.+ <~ RPAREN) ~ implicit_begin <~ RPAREN ^^ {
+  def definefunc: Parser[Define] = LPAREN ~> DEF ~> (LPAREN ~> IDENT.+ <~ RPAREN) ~ implicit_begin <~ RPAREN ^^ {
     case idents ~ e => Define(idents.head, Lam(idents.tail, e))
   }
 
-  implicit def set: Parser[Set_!] = LPAREN ~> SET ~> IDENT ~ implicit_begin <~ RPAREN ^^ {
+  def set: Parser[Set_!] = LPAREN ~> SET ~> IDENT ~ implicit_begin <~ RPAREN ^^ {
     case id ~ e => Set_!(id, e)
   }
 
-  implicit def begin: Parser[Begin] = LPAREN ~> BEGIN ~> expr.* <~ RPAREN ^^ {
+  def begin: Parser[Begin] = LPAREN ~> BEGIN ~> expr.* <~ RPAREN ^^ {
     case exps => Begin(exps)
   }
 
-  implicit def implicit_begin: Parser[Expr] = expr.+ ^^ {
+  def implicit_begin: Parser[Expr] = expr.+ ^^ {
     case e :: Nil => e
     case exps @ (e :: es) => Begin(exps)
   }
 
-  implicit def imp_structure: Parser[Expr] = void | define | definefunc | set | begin
+  def imp_structure: Parser[Expr] = void | define | definefunc | set | begin
 
-  implicit def quasiquote: Parser[Expr] = QUASIQUOTE ~> quasiterm ^^ id
+  def quasiquote: Parser[Expr] = QUASIQUOTE ~> quasiterm ^^ id
 
-  implicit def quote: Parser[Expr] = LPAREN ~> QUOTE ~> quasiterm <~ RPAREN ^^ id
+  def quote: Parser[Expr] = LPAREN ~> QUOTE ~> quasiterm <~ RPAREN ^^ id
 
-  implicit def symbol: Parser[SSym] = SYMBOL ^^ { SSym(_) }
+  def symbol: Parser[SSym] = SYMBOL ^^ { SSym(_) }
 
-  implicit def list: Parser[App] = LPAREN ~> quasiterm.* <~ RPAREN ^^ {
+  def list: Parser[App] = LPAREN ~> quasiterm.* <~ RPAREN ^^ {
     case terms => App(Var("list"), terms)
   }
-  implicit def unquote: Parser[Expr] = UNQUOTE ~> expr ^^ id
+  def unquote: Parser[Expr] = UNQUOTE ~> expr ^^ id
 
-  implicit def quasiterm: Parser[Expr] = literals | unquote | list | symbol
+  def quasiterm: Parser[Expr] = literals | unquote | list | symbol
 
   def expr: Parser[Expr] = literals | quasiquote | quote | variable | lam | lets | dispatch | imp_structure | app
 
