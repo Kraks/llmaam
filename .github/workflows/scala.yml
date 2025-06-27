@@ -28,4 +28,6 @@ jobs:
         sudo DEBIAN_FRONTEND=noninteractive apt-get install -y graphviz
     - uses: sbt/setup-sbt@v1
     - name: Run tests
-      run: sbt 'testOnly llmaam.aam.TestAAM'
+      run: |
+        sbt 'testOnly llmaam.aam.TestAAM'
+        sbt 'testOnly llmaam.frontend.scm.TestParser'
