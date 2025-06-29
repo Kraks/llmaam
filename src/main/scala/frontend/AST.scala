@@ -5,23 +5,11 @@ package llmaam.frontend.scm
 trait Expr
 trait AtomExpr
 
-case class SSym(x: String) extends Expr with AtomExpr {
-  override def toString: String = "SSym(\"" + x + "\")"
-}
-
-case class Var(x: String) extends Expr with AtomExpr {
-  override def toString: String = "Var(\"" + x + "\")"
-}
+case class SSym(x: String) extends Expr with AtomExpr
+case class Var(x: String) extends Expr with AtomExpr
 case class App(e1: Expr, param: List[Expr]) extends Expr with AtomExpr
-case class Lam(param: List[String], body: Expr) extends Expr with AtomExpr {
-  override def toString: String = {
-    val list = param map { s => "\"" + s + "\"" } mkString (", ")
-    "Lam(List(" + list + "), " + body + ")"
-  }
-}
-
+case class Lam(param: List[String], body: Expr) extends Expr with AtomExpr
 case class Bind(x: String, e: Expr) {
-  override def toString: String = "Bind(\"" + x + "\" " + e + ")"
   def toSet: Set_! = Set_!(x, e)
 }
 
@@ -42,12 +30,13 @@ case class Lrc(bds: List[Bind], body: Expr) extends Expr {
 case class IntLit(x: Int) extends Expr with AtomExpr
 case class FloatLit(x: Double) extends Expr with AtomExpr
 case class BoolLit(x: Boolean) extends Expr with AtomExpr
-case class CharLit(x: Char) extends Expr with AtomExpr {
-  override def toString: String = "CharLit('" + x + "')"
-}
+case class CharLit(x: Char) extends Expr with AtomExpr
 case class If(cnd: Expr, thn: Expr, els: Expr) extends Expr with AtomExpr
 
-trait CondBrTrait { val cnd: Expr; val thn: Expr }
+trait CondBrTrait {
+  val cnd: Expr
+  val thn: Expr
+}
 case class CondBr(cnd: Expr, thn: Expr) extends CondBrTrait
 case class CondProcBr(cnd: Expr, thn: Expr) extends CondBrTrait
 case class Cond(branches: List[CondBrTrait]) extends Expr
@@ -56,13 +45,9 @@ case class CaseBranch(cases: List[Expr], thn: Expr)
 case class Case(e: Expr, branches: List[CaseBranch]) extends Expr
 
 case class Void() extends Expr with AtomExpr
-case class Set_!(x: String, e: Expr) extends Expr with AtomExpr {
-  override def toString: String = "Set_!(\"" + x + "\", " + e + ")"
-}
+case class Set_!(x: String, e: Expr) extends Expr with AtomExpr
 case class Begin(es: List[Expr]) extends Expr
-case class Define(x: String, e: Expr) extends Expr {
-  override def toString: String = "Define(\"" + x + "\"," + e + ")"
-}
+case class Define(x: String, e: Expr) extends Expr
 
 extension (e: Expr)
   def pretty: String = e match
