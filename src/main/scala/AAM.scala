@@ -177,7 +177,7 @@ abstract class Analyzer:
       // VState stepping inspects the continuation
       case s@VState(v, ρ, σᵥ, σₖ, k, t) => continue(s)
       // atomic expressions steps to VState
-      case EState(Lit(i @ (_: Int | _: Double | _: Char)), ρ, σᵥ, σₖ, k, t) =>
+      case EState(Lit(i @ (_: Int | _: Double | _: Char | _: String)), ρ, σᵥ, σₖ, k, t) =>
         ("lit-num", VState(Num(), ρ, σᵥ, σₖ, k, t1))
       case EState(Lit(b: Boolean), ρ, σᵥ, σₖ, k, t) =>
         ("lit-bool", VState(Bool(), ρ, σᵥ, σₖ, k, t1))

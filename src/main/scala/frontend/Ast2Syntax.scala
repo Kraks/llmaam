@@ -71,10 +71,11 @@ object Ast2Syntax:
     case S.Let(bds, body) => foldLets(bds, body, rec = false)
     case S.Lrc(bds, body) => foldLets(bds, body, rec = true)
 
-    // XXX (ZZ): we made a small trick to translate `define` (since we do not have 
-    // `define` in our core syntax)
+    // XXX (ZZ): we made a small trick to translate `define`, since we do not have
+    // `define` in our core syntax.
     case S.Define(x, rhs) => C.Letrec(x, translate(rhs), C.Void())
     case S.Begin(es) => translateSeq(es)
 
-    // TODO: support symbols in the core syntax
-    case S.SSym(x) => unsupported("symbol", x)
+    // XXX (ZZ): a hacky way to handle symbols in Scheme, since we do not have
+    // `quote` in our core syntax.
+    case S.SSym(x) => C.App(C.Var("quote"), C.Lit(x))

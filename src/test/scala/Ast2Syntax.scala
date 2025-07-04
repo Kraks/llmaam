@@ -16,7 +16,7 @@ class TestAst2Syntax extends FunSuite {
   test("translate Lits"):
     testTranslation("1", "1")
     testTranslation("3.14", "3.14")
-    testTranslation("#\\a", "a")
+    testTranslation("#\\a", "#\\a")
     testTranslation("#t", "true")
     testTranslation("#T", "true")
     testTranslation("#f", "false")
@@ -67,8 +67,8 @@ class TestAst2Syntax extends FunSuite {
       """(cond
           [(positive? -5) (error 1)]
           [(zero? -5) (error 2)]
-          [(positive? 5) 3])""",
-      "(if (positive? -5) then (error 1) else (if (zero? -5) then (error 2) else (if (positive? 5) then 3 else (void))))"
+          [(positive? 5) 'here])""",
+      """(if (positive? -5) then (error 1) else (if (zero? -5) then (error 2) else (if (positive? 5) then (quote "here") else (void))))"""
     )
 
   test("begin_define"):

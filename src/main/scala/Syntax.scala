@@ -12,7 +12,7 @@ inline def isUnary(op: String): Boolean = arithUn(op) || logicUn(op)
 inline def isBinary(op: String): Boolean = arithBin(op) || relBin(op) || logicBin(op)
 
 enum Expr:
-  case Lit(n: Int | Boolean | Double | Char)
+  case Lit(n: Int | Boolean | Double | Char | String)
   case Void()
   case UnaryOp(op: String, arg: Expr)
   case BinOp(op: String, lhs: Expr, rhs: Expr)
@@ -27,7 +27,10 @@ enum Expr:
   case SetVar(x: String, rhs: Expr)
 
   override def toString(): String = this match
-    case Lit(n) => n.toString
+    case Lit(n) => n match
+      case _: Char => s"#\\$n"
+      case _: String => s""""$n""""
+      case _ => n.toString
     case Void() => "(void)"
     case UnaryOp(op, arg) => s"($op $arg)"
     case BinOp(op, lhs, rhs) => s"($lhs $op $rhs)"
