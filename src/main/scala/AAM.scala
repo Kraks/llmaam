@@ -40,12 +40,6 @@ enum Value:
 
 import Value.*
 
-val arithBin  = Set("+", "-", "*", "/", "%")
-val arithUn   = Set("+", "-")
-val relBin    = Set(">", "<", ">=", "<=", "==", "!=")
-val logicBin  = Set("&", "|")
-val logicUn   = Set("!")
-
 def evalUnaryOp(op: String, v: Value): Option[Value] = (op, v) match
   case (o, Num()) if arithUn(o) => Some(Num())
   case (o, Bool()) if logicUn(o) => Some(Bool())
@@ -96,7 +90,7 @@ abstract class Analyzer:
   val transitions: ListBuffer[(State, Label, Set[State])] = ListBuffer()
 
   def isAtomic(e: Expr): Boolean = e match
-    case Lit(_) | Var(_) | Lam(_, _) => true
+    case Lit(_) | Void() | Var(_) | Lam(_, _) => true
     case UnaryOp(_, _) | BinOp(_, _, _)
         | App(_, _) | Let(_, _, _) | Letrec(_, _, _)
         | Begin(_) | If(_, _, _) | While(_, _)
@@ -183,10 +177,12 @@ abstract class Analyzer:
       // VState stepping inspects the continuation
       case s@VState(v, ρ, σᵥ, σₖ, k, t) => continue(s)
       // atomic expressions steps to VState
-      case EState(Lit(i: Int), ρ, σᵥ, σₖ, k, t) =>
-        ("lit-int", VState(Num(), ρ, σᵥ, σₖ, k, t1))
+      case EState(Lit(i @ (_: Int | _: Double | _: Char)), ρ, σᵥ, σₖ, k, t) =>
+        ("lit-num", VState(Num(), ρ, σᵥ, σₖ, k, t1))
       case EState(Lit(b: Boolean), ρ, σᵥ, σₖ, k, t) =>
         ("lit-bool", VState(Bool(), ρ, σᵥ, σₖ, k, t1))
+      case EState(Void(), ρ, σᵥ, σₖ, k, t) =>
+        ("void", VState(UnitVal(), ρ, σᵥ, σₖ, k, t1))
       case EState(Var(x), ρ, σᵥ, σₖ, k, t) =>
         ρ.get(x) match
           case Some(α) =>

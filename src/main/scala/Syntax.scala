@@ -2,8 +2,18 @@ package llmaam.syntax
 
 // Syntax
 
+val arithBin  = Set("+", "-", "*", "/", "%")
+val arithUn   = Set("+", "-")
+val relBin    = Set(">", "<", ">=", "<=", "==", "!=")
+val logicBin  = Set("&", "|")
+val logicUn   = Set("!")
+
+inline def isUnary(op: String): Boolean = arithUn(op) || logicUn(op)
+inline def isBinary(op: String): Boolean = arithBin(op) || relBin(op) || logicBin(op)
+
 enum Expr:
-  case Lit(n: Int | Boolean)
+  case Lit(n: Int | Boolean | Double | Char)
+  case Void()
   case UnaryOp(op: String, arg: Expr)
   case BinOp(op: String, lhs: Expr, rhs: Expr)
   case Var(x: String)
@@ -18,6 +28,7 @@ enum Expr:
 
   override def toString(): String = this match
     case Lit(n) => n.toString
+    case Void() => "(void)"
     case UnaryOp(op, arg) => s"($op $arg)"
     case BinOp(op, lhs, rhs) => s"($lhs $op $rhs)"
     case Var(x) => x
