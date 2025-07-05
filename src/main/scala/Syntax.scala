@@ -1,6 +1,6 @@
 package llmaam.syntax
 
-// Syntax
+// Core syntax
 
 val arithBin  = Set("+", "-", "*", "/", "%")
 val arithUn   = Set("+", "-")

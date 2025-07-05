@@ -4,15 +4,31 @@ import munit.FunSuite
 
 import llmaam.syntax.Expr as C // Core Syntax
 
-class TestAst2Syntax extends FunSuite {
-  def testTranslation(case_s: String, expected: String): Unit = {
-    val e = SchemeParser(case_s)
-      .getOrElse(fail(s"SchemeParser returned None for input: $case_s"))
-    val c = Ast2Syntax(e).toString()
-    println(s"Translating: $case_s to $c")
+class Playground extends FunSuite{
+  test("multi-define"):
+    val input ="""
+    (define (add x y) (+ x y))
+    (define (sub x y) (- x y))
+    (add 1 (sub 5 3))
+    """
+    val e = SchemeParser(input)
+      .getOrElse(fail(s"SchemeParser returned None for input: $input"))
+    val c = AST2Core(e).toString()
+    println(s"""Translating: $input
+    desugared: $e
+    core: $c""")
+    //(letrec add = (λx. (λy. (x + y))) in (letrec sub = (λx. (λy. (x - y))) in (begin ((add 1) ((sub 5) 3)))))
+}
+
+class TestAST2Core extends FunSuite {
+  def testTranslation(input: String, expected: String): Unit = {
+    val e = SchemeParser(input)
+      .getOrElse(fail(s"SchemeParser returned None for input: $input"))
+    val c = AST2Core(e).toString()
+    println(s"Translating: $input to $c")
     assertEquals(c, expected, s"Expected: $expected, but got: $c")
   }
-  
+
   test("translate Lits"):
     testTranslation("1", "1")
     testTranslation("3.14", "3.14")
@@ -23,7 +39,7 @@ class TestAst2Syntax extends FunSuite {
     testTranslation("#F", "false")
     testTranslation("(void)", "(void)")
     testTranslation("3.14+2.7i", "((vector 3.14) 2.7)")
- 
+
   test("translate Lam"):
     testTranslation("(lambda (z) (- z))", "(λz. (- z))")
     testTranslation(
@@ -37,7 +53,7 @@ class TestAst2Syntax extends FunSuite {
         "((lambda (x y z) (+ (+ x y) z)) 1 2 3)",
         "((((λx. (λy. (λz. ((x + y) + z)))) 1) 2) 3)"
     )
-  
+
   test("letrec_to_set"):
     testTranslation(
       "(letrec ([a 3] [b a]) (add a b))",
@@ -60,7 +76,7 @@ class TestAst2Syntax extends FunSuite {
     testTranslation(
       "(define (f a b) (+ a b))",
       "(letrec f = (λa. (λb. (a + b))) in (void))"
-    ) 
+    )
 
   test("cond"):
     testTranslation(

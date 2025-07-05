@@ -2,10 +2,25 @@ package llmaam.frontend.scm
 
 // Adapted from code by Yuxuan Chen
 
-object SchemeASTDesugar {
+extension (e: Expr)
+  def desugar: Expr = new SchemeASTDesugar().apply(e)
+
+class SchemeASTDesugar() {
   var lastIdent = 0
 
-  def newIdentLet(e: Expr)(f: Expr => Expr): App = {
+  def apply(expr: Expr): Expr = expr match
+    case App(e1, param) => App(apply(e1), param map apply)
+    case Lam(param, body) => Lam(param, apply(body))
+    case If(cnd, thn, els) => If(apply(cnd), apply(thn), apply(els))
+    case Cond(branches) => desugarCondBranches(branches)
+    case Case(e, branches) =>
+      newIdentLet(apply(e)) { v => desugarCaseBranches(v, branches) }
+    case Set_!(x, e) => Set_!(x, apply(e))
+    case Begin(es) => Begin(es.map(apply))
+    case Define(x, s) => Define(x, apply(s))
+    case _ => expr
+
+  private def newIdentLet(e: Expr)(f: Expr => Expr): App = {
     val prefix = "$"
     val id = lastIdent
     lastIdent += 1
@@ -13,7 +28,7 @@ object SchemeASTDesugar {
     App(Lam(List(newIdent), f(Var(newIdent))), List(e))
   }
 
-  def desugarCondBranches(branches: List[CondBrTrait]): Expr =
+  private def desugarCondBranches(branches: List[CondBrTrait]): Expr =
     branches match
       case Nil => Void()
       case x :: xs =>
@@ -25,7 +40,7 @@ object SchemeASTDesugar {
               τ => If(τ, App(apply(thnl), List(τ)), desugarCondBranches(xs))
             }
 
-  def desugarCaseBranches(comp: Expr, branches: List[CaseBranch]): Expr =
+  private def desugarCaseBranches(comp: Expr, branches: List[CaseBranch]): Expr =
     branches match
       case Nil => Void()
       case x :: xs =>
@@ -35,7 +50,7 @@ object SchemeASTDesugar {
           case (e, xsCases) => If(App(Var("eq?"), List(comp, e)), thn, xsCases)
         }
 
-  def foldDefine(seq: List[Expr]): (List[String], List[Expr]) =
+  private def foldDefine(seq: List[Expr]): (List[String], List[Expr]) =
     seq match
       case Nil => (List(), List())
       case x :: xs =>
@@ -44,7 +59,7 @@ object SchemeASTDesugar {
           case Define(n, v) => (n :: ls, Set_!(n, v) :: le)
           case _ => (ls, x :: le)
 
-  def desugarSequence(seq: List[Expr]): Expr = {
+  private def desugarSequence(seq: List[Expr]): Expr = {
     val (ls, le) = foldDefine(seq)
     val body = le match
       case Nil => Void()
@@ -60,16 +75,4 @@ object SchemeASTDesugar {
         App(Lam(List(name), b), List(Void()))
     }
   }
-
-  def apply(expr: Expr): Expr = expr match
-    case App(e1, param) => App(apply(e1), param map apply)
-    case Lam(param, body) => Lam(param, apply(body))
-    case If(cnd, thn, els) => If(apply(cnd), apply(thn), apply(els))
-    case Cond(branches) => desugarCondBranches(branches)
-    case Case(e, branches) =>
-      newIdentLet(apply(e)) { v => desugarCaseBranches(v, branches) }
-    case Set_!(x, e) => Set_!(x, apply(e))
-    case Begin(es) => Begin(es.map(apply))
-    case Define(x, s) => Define(x, apply(s))
-    case _ => expr
 }

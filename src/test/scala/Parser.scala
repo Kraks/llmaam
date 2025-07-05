@@ -1,6 +1,7 @@
 package llmaam.frontend.scm
 
 import munit.FunSuite
+import scala.io.Source
 
 class TestParser extends FunSuite {
 
@@ -87,55 +88,49 @@ class TestParser extends FunSuite {
     assert(actual == expected)
 
   test("desugar"):
-    assert(SchemeASTDesugar(IntLit(1)) == IntLit(1))
+    assert(IntLit(1).desugar == IntLit(1))
 
-    assert(SchemeASTDesugar(Begin(List(Define("x", IntLit(2)), Set_!("x", IntLit(3)), Var("x")))).pretty ==
+    assert((Begin(List(Define("x", IntLit(2)), Set_!("x", IntLit(3)), Var("x")))).desugar.pretty ==
       "(begin (define x 2) (set! x 3) x)")
 
-    assert(SchemeASTDesugar(
-      Cond(List(
+    assert(Cond(List(
         CondBr(
           App(Var("positive?"),List(IntLit(-5))),
           App(Var("error"),List())),
         CondBr(App(Var("zero?"),List(IntLit(-5))),App(Var("error"),List())),
-        CondBr(App(Var("positive?"),List(IntLit(5))),SSym("here"))))).pretty ==
+        CondBr(App(Var("positive?"),List(IntLit(5))),SSym("here")))).desugar.pretty ==
         "(if (positive? -5) (error) (if (zero? -5) (error) (if (positive? 5) 'here (void))))")
 
-    assert(SchemeASTDesugar(Case(IntLit(3), List(
+    assert(Case(IntLit(3), List(
         CaseBranch(List(IntLit(3), IntLit(4), IntLit(5)), BoolLit(true)),
-        CaseBranch(List(App(Lam(List(), IntLit(7)), List()), IntLit(6)), BoolLit(false))))).pretty ==
+        CaseBranch(List(App(Lam(List(), IntLit(7)), List()), IntLit(6)), BoolLit(false)))).desugar.pretty ==
       "((lambda ($0) (if (eq? $0 3) #t (if (eq? $0 4) #t (if (eq? $0 5) #t (if (eq? $0 ((lambda () 7))) #f (if (eq? $0 6) #f (void))))))) 3)")
 
     val Some(ast) = SchemeParser("(define (pow a b) (if (eq? b 0) 1 (* a (pow a (- b 1))))) (pow 3 5)")
-    assert(SchemeASTDesugar(ast).pretty ==
+    assert(ast.desugar.pretty ==
       "(begin (define pow (lambda (a b) (if (eq? b 0) 1 (* a (pow a (- b 1)))))) (pow 3 5))")
 
     val Some(begin_in_begin) = SchemeParser("(begin (begin a b) c d)")
-    assert(SchemeASTDesugar(begin_in_begin).pretty == "(begin (begin a b) c d)")
+    assert(begin_in_begin.desugar.pretty == "(begin (begin a b) c d)")
 
-  /*
-    test("toplas98_boyer") {
-      val fileName = "benchmarks/scm/toplas98/boyer.sch"
-      val program = Source.fromFile(fileName).mkString
-      assert(SchemeParser(program) != None)
-    }
+  test("toplas98_boyer"):
+    val fileName = "benchmarks/oaam/toplas98/boyer.sch"
+    val program = Source.fromFile(fileName).mkString
+    assert(SchemeParser(program) != None)
 
-    test("toplas98_nbody_comments") {
-      val fileName1 = "benchmarks/scm/toplas98/nbody.sch"
-      val fileName2 = "benchmarks/scm/toplas98/nbody-processed.sch"
-      val program1 = Source.fromFile(fileName1).mkString
-      val program2 = Source.fromFile(fileName2).mkString
+  test("toplas98_nbody"):
+    val fileName1 = "benchmarks/oaam/toplas98/nbody.sch"
+    val program1 = Source.fromFile(fileName1).mkString
+    assert(SchemeParser(program1) != None)
+    //val fileName2 = "benchmarks/scm/toplas98/nbody-processed.sch"
+    //val program2 = Source.fromFile(fileName2).mkString
+    //assert(SchemeParser(program1) == SchemeParser(program2))
 
-      assert(SchemeParser(program1) == SchemeParser(program2))
-    }
-
-    test("toplas98_lattice_comments") {
-      val fileName1 = "benchmarks/scm/toplas98/lattice.scm"
-      val fileName2 = "benchmarks/scm/toplas98/lattice-processed.scm"
-      val program1 = Source.fromFile(fileName1).mkString
-      val program2 = Source.fromFile(fileName2).mkString
-
-      assert(SchemeParser(program1) == SchemeParser(program2))
-    }
-  */
+  test("toplas98_lattice"):
+    val fileName1 = "benchmarks/oaam/toplas98/lattice.scm"
+    val program1 = Source.fromFile(fileName1).mkString
+    assert(SchemeParser(program1) != None)
+    //val fileName2 = "benchmarks/scm/toplas98/lattice-processed.scm"
+    //val program2 = Source.fromFile(fileName2).mkString
+    //assert(SchemeParser(program1) == SchemeParser(program2))
 }
