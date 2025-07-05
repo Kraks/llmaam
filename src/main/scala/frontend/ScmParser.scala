@@ -138,8 +138,12 @@ object SchemeParser extends SchemeTokenParser {
 
   def apply(input: String): Option[Expr] = apply(program, input)
 
-  def apply[T](pattern: Parser[T], input: String): Option[T] = parse(pattern, input) match {
-    case Success(matched, _) => Some(matched)
-    case e => println(e); None
-  }
+  def apply[T](pattern: Parser[T], input: String): Option[T] =
+    parse(pattern, input) match
+      case Success(matched, _) => Some(matched)
+      case e => println(e); None
+
+  def parseFile(filename: String): Option[Expr] =
+    val source = Source.fromFile(filename).mkString
+    apply(source)
 }

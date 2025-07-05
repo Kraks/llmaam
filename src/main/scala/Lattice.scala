@@ -28,7 +28,7 @@ given MapLattice[K, V: Lattice]: Lattice[Map[K, V]] with
     def ⊔(m2: Map[K, V]): Map[K, V] =
       m1.foldLeft(m2) { case (m, (k, v)) =>
         val oldValue = m.getOrElse(k, lv.bot)
-        if (oldValue != Set()) println(s"Precision loss at ${k}:\n  merging ${v}\n      and ${oldValue}")
+        //if (oldValue != Set()) println(s"Precision loss at ${k}:\n  merging ${v}\n      and ${oldValue}")
         m + (k -> v ⊔ oldValue)
       }
     def ⊓(m2: Map[K, V]): Map[K, V] =

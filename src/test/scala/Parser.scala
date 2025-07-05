@@ -4,7 +4,6 @@ import munit.FunSuite
 import scala.io.Source
 
 class TestParser extends FunSuite {
-
   test("pretty-printer"):
     assert(CharLit('a').pretty == "#\\a")
 
@@ -87,6 +86,44 @@ class TestParser extends FunSuite {
       CondBr(App(Var("positive?"),List(IntLit(5))),SSym("here")))))
     assert(actual == expected)
 
+  test("toplas98_boyer"):
+    val fileName = "benchmarks/oaam/toplas98/boyer.sch"
+    val program = Source.fromFile(fileName).mkString
+    assert(SchemeParser(program) != None)
+
+  test("toplas98_nbody"):
+    val fileName1 = "benchmarks/oaam/toplas98/nbody.sch"
+    val program1 = Source.fromFile(fileName1).mkString
+    assert(SchemeParser(program1) != None)
+    //val fileName2 = "benchmarks/scm/toplas98/nbody-processed.sch"
+    //val program2 = Source.fromFile(fileName2).mkString
+    //assert(SchemeParser(program1) == SchemeParser(program2))
+
+  test("toplas98_lattice"):
+    val fileName1 = "benchmarks/oaam/toplas98/lattice.scm"
+    val program1 = Source.fromFile(fileName1).mkString
+    assert(SchemeParser(program1) != None)
+    //val fileName2 = "benchmarks/scm/toplas98/lattice-processed.scm"
+    //val program2 = Source.fromFile(fileName2).mkString
+    //assert(SchemeParser(program1) == SchemeParser(program2))
+
+  test("kcfa-worst-case"):
+    val fileName1 = "benchmarks/kcfa/kcfa-worst-case-16.scm"
+    assert(SchemeParser(Source.fromFile(fileName1).mkString) != None)
+    val fileName2 = "benchmarks/kcfa/kcfa-worst-case-32.scm"
+    assert(SchemeParser(Source.fromFile(fileName2).mkString) != None)
+    val fileName3 = "benchmarks/kcfa/kcfa-worst-case-64.scm"
+    assert(SchemeParser(Source.fromFile(fileName3).mkString) != None)
+    val fileName4 = "benchmarks/kcfa/kcfa-worst-case-128.scm"
+    assert(SchemeParser(Source.fromFile(fileName4).mkString) != None)
+
+  test("church-numbers"):
+    val fileName1 = "benchmarks/oaam/church.sch"
+    val program1 = Source.fromFile(fileName1).mkString
+    assert(SchemeParser(program1) != None)
+}
+
+class TestDesugar extends FunSuite {
   test("desugar"):
     assert(IntLit(1).desugar == IntLit(1))
 
@@ -112,25 +149,4 @@ class TestParser extends FunSuite {
 
     val Some(begin_in_begin) = SchemeParser("(begin (begin a b) c d)")
     assert(begin_in_begin.desugar.pretty == "(begin (begin a b) c d)")
-
-  test("toplas98_boyer"):
-    val fileName = "benchmarks/oaam/toplas98/boyer.sch"
-    val program = Source.fromFile(fileName).mkString
-    assert(SchemeParser(program) != None)
-
-  test("toplas98_nbody"):
-    val fileName1 = "benchmarks/oaam/toplas98/nbody.sch"
-    val program1 = Source.fromFile(fileName1).mkString
-    assert(SchemeParser(program1) != None)
-    //val fileName2 = "benchmarks/scm/toplas98/nbody-processed.sch"
-    //val program2 = Source.fromFile(fileName2).mkString
-    //assert(SchemeParser(program1) == SchemeParser(program2))
-
-  test("toplas98_lattice"):
-    val fileName1 = "benchmarks/oaam/toplas98/lattice.scm"
-    val program1 = Source.fromFile(fileName1).mkString
-    assert(SchemeParser(program1) != None)
-    //val fileName2 = "benchmarks/scm/toplas98/lattice-processed.scm"
-    //val program2 = Source.fromFile(fileName2).mkString
-    //assert(SchemeParser(program1) == SchemeParser(program2))
 }

@@ -2,6 +2,7 @@ package llmaam.aam
 
 import upickle.default.*
 import scala.collection.mutable.{ListBuffer, HashMap}
+import scala.annotation.tailrec
 
 import llmaam.syntax.*
 import Expr.*
@@ -239,7 +240,7 @@ abstract class Analyzer:
         ("define-rhs", EState(rhs, ρ, σᵥ, σₖ1, KDefine(x, rhs, ρ, α), t1))
       */
 
-  def drive(todo: List[State], seen: Set[State]): Set[State] =
+  @tailrec final def drive(todo: List[State], seen: Set[State]): Set[State] =
     if (todo.isEmpty) seen
     else
       val s::rest = todo

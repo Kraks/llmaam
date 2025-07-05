@@ -5,6 +5,9 @@ import llmaam.frontend.scm as S // Scheme AST
 import llmaam.syntax.Expr as C // Core Syntax
 import llmaam.syntax.{isUnary, isBinary} // Core Syntax utilities
 
+extension (e: S.Expr)
+  def toCore: C = AST2Core(e)
+
 object AST2Core:
   // Public entry point.
   def apply(e: S.Expr): C = translate(e.desugar)
@@ -60,6 +63,8 @@ object AST2Core:
     case S.SetVar(x, rhs) => C.SetVar(x, translate(rhs))
     case S.If(c, t, el) => C.If(translate(c), translate(t), translate(el))
     // Let and Letrec
+    // XXX (GW): the parser already desugars `let` and `letrec` into `app`, which is a bit
+    // handwavy, should consider refactor there and here.
     case S.Let(bds, body) => foldLets(bds, body, rec = false)
     case S.Lrc(bds, body) => foldLets(bds, body, rec = true)
     // XXX (ZZ): we made a small trick to translate `define`, since we do not have
