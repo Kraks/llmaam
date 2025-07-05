@@ -18,7 +18,7 @@ def testAnalyzer[T <: Analyzer](analyzer: T, program: Expr, name: String, printN
   }
   // Check the recorded "transitions" match the states found
   assert(states == transitionStates)
-  //analyzer.dumpGraph(s"${name}.dot", printNode)
+  analyzer.dumpGraph(s"${name}.dot", printNode)
 
 class Playground extends FunSuite {
   //test("stack2 - 2cfa; p4f"):
@@ -39,16 +39,31 @@ class Playground extends FunSuite {
   */
 
   val kcfa2 = SchemeParser.parseFile("benchmarks/kcfa/kcfa-worst-case-2.scm").get.toCore
+  // Analysis summary [kcfa2_0cfa_p4f]: #State: 307, #Edges: 306
   testAnalyzer(new Analyzer with KCFA(0) with P4FContAlloc, kcfa2, "kcfa2_0cfa_p4f", false)
+  // Analysis summary [kcfa2_0cfa_aac]: #State: 203, #Edges: 202
   testAnalyzer(new Analyzer with KCFA(0) with AACContAlloc, kcfa2, "kcfa2_0cfa_aac", false)
+  // Analysis summary [kcfa2_0cfa_src]: #State: 246, #Edges: 245
   testAnalyzer(new Analyzer with KCFA(0) with SrcContAlloc, kcfa2, "kcfa2_0cfa_src", false)
+  // Analysis summary [kcfa2_0cfa_tgt]: #State: 307, #Edges: 306
   testAnalyzer(new Analyzer with KCFA(0) with TgtContAlloc, kcfa2, "kcfa2_0cfa_tgt", false)
 
+  // Analysis summary [kcfa2_1cfa_src]: #State: 12189, #Edges: 12117
   testAnalyzer(new Analyzer with KCFA(1) with SrcContAlloc, kcfa2, "kcfa2_1cfa_src", false)
-  // XXX: those two are prohibitively slow...
+  // Analysis summary [kcfa2_1cfa_aac]: #State: 336, #Edges: 324
+  testAnalyzer(new Analyzer with KCFA(1) with AACContAlloc, kcfa2, "kcfa2_1cfa_aac", false)
+  // XXX: those two are prohibitively slow (didn't finish in 3000+ seconds)
   //testAnalyzer(new Analyzer with KCFA(1) with P4FContAlloc, kcfa2, "kcfa2_1cfa_p4f", false)
   //testAnalyzer(new Analyzer with KCFA(1) with TgtContAlloc, kcfa2, "kcfa2_1cfa_tgt", false)
-  testAnalyzer(new Analyzer with KCFA(1) with AACContAlloc, kcfa2, "kcfa2_1cfa_aac", false)
+}
+
+class Playground2 extends FunSuite {
+  val kcfa2 = SchemeParser.parseFile("benchmarks/kcfa/kcfa-worst-case-2.scm").get.toCore
+  //Analysis summary [kcfa2_gpt4o]: #State: 133, #Edges: 131
+  //Analysis summary [kcfa2_gpt40]: #State: 153, #Edges: 150
+  //Analysis summary [kcfa2_gpt4o]: #State: 312, #Edges: 303
+  //Analysis summary [kcfa2_gpt4o]: #State: 272, #Edges: 265
+  testAnalyzer(new Analyzer with LLMAlloc with OpenAI, kcfa2, "kcfa2_gpt4o", false)
 }
 
 class TestAAM extends FunSuite {

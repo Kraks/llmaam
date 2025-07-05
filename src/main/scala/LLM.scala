@@ -18,6 +18,9 @@ import State.*
 trait LLM:
   def llm: ChatModel
 
+  //val goal: String = "precision"
+  val goal: String = "scalability (avoiding state space explosion)"
+
   def prepareBindAddrQuery(s: State, x: String, t: Time): String =
     s"""
     |{
@@ -121,7 +124,7 @@ trait LLM:
   |  "target-binding-store": BStore,      // for KAddr only
   |}
   |
-  |You should analyze the current "state" and return an abstract address for better analysis precision.
+  |You should analyze the current "state" and return an abstract address for better analysis ${goal}.
   |You should look at the entries of the existing binding store and continuation store,
   |since if the binding address already exists, reusing it decreases the precision of the analysis.
   |
@@ -138,7 +141,7 @@ trait LLM:
   |  "k": Int represented as String,  // for Tick only
   |}
   |
-  |Field "reason" should explain why you chose this address for better precision by analyzing the current state.
+  |Field "reason" should explain why you chose this address for better ${goal} by analyzing the current state.
   |The reason you give should be specific to the current state and should not be generic.
   |Field "query-type" should be either "BAddr", "KAddr", or "Tick" according to the "query-type" field in the input query.
   |
@@ -180,8 +183,8 @@ trait OpenAI extends LLM:
     .apiKey(openaiAPI)
     .modelName(OpenAiChatModelName.GPT_4_O_MINI)
     .responseFormat("json_object")
-    .logRequests(true)
-    .logResponses(true)
+    //.logRequests(true)
+    //.logResponses(true)
     .build()
 
   def llm: ChatModel = openai
