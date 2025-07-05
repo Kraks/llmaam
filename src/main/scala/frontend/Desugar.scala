@@ -15,7 +15,7 @@ class SchemeASTDesugar() {
     case Cond(branches) => desugarCondBranches(branches)
     case Case(e, branches) =>
       newIdentLet(apply(e)) { v => desugarCaseBranches(v, branches) }
-    case Set_!(x, e) => Set_!(x, apply(e))
+    case SetVar(x, e) => SetVar(x, apply(e))
     case Begin(es) => Begin(es.map(apply))
     case Define(x, s) => Define(x, apply(s))
     case _ => expr
@@ -56,7 +56,7 @@ class SchemeASTDesugar() {
       case x :: xs =>
         val (ls, le) = foldDefine(xs)
         x match
-          case Define(n, v) => (n :: ls, Set_!(n, v) :: le)
+          case Define(n, v) => (n :: ls, SetVar(n, v) :: le)
           case _ => (ls, x :: le)
 
   private def desugarSequence(seq: List[Expr]): Expr = {
@@ -67,7 +67,7 @@ class SchemeASTDesugar() {
       case x :: xs =>
         x match
           case Define(n, v) =>
-            App(Lam(List(n), newIdentLet(Set_!(n, apply(v))) { _ => desugarSequence(xs) }), List(Void()))
+            App(Lam(List(n), newIdentLet(SetVar(n, apply(v))) { _ => desugarSequence(xs) }), List(Void()))
           case _ =>
             newIdentLet(apply(x)) { _ => desugarSequence(xs) }
     ls.foldLeft(body) {

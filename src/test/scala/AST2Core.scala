@@ -10,13 +10,17 @@ class Playground extends FunSuite{
     (define (add x y) (+ x y))
     (define (sub x y) (- x y))
     (add 1 (sub 5 3))
+    ;;(letrec ([add (lambda (x y) (+ x y))] [sub (lambda (x y) (- x y))])
+    ;;  (begin
+    ;;    ((add 1) ((sub 5) 3))))
     """
     val e = SchemeParser(input)
       .getOrElse(fail(s"SchemeParser returned None for input: $input"))
     val c = AST2Core(e).toString()
     println(s"""Translating: $input
-    desugared: $e
-    core: $c""")
+    source:    ${e}
+    desugared: ${e.desugar}
+    core:      $c""")
     //(letrec add = (λx. (λy. (x + y))) in (letrec sub = (λx. (λy. (x - y))) in (begin ((add 1) ((sub 5) 3)))))
 }
 

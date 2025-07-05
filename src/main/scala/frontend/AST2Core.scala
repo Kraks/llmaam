@@ -57,12 +57,19 @@ object AST2Core:
           C.BinOp(op, translate(a), translate(b))
         case _ =>
           apps(translate(fun), args.map(translate))
-    case S.Set_!(x, rhs) => C.SetVar(x, translate(rhs))
+    case S.SetVar(x, rhs) => C.SetVar(x, translate(rhs))
     case S.If(c, t, el) => C.If(translate(c), translate(t), translate(el))
     // Let and Letrec
     case S.Let(bds, body) => foldLets(bds, body, rec = false)
     case S.Lrc(bds, body) => foldLets(bds, body, rec = true)
     // XXX (ZZ): we made a small trick to translate `define`, since we do not have
     // `define` in our core syntax.
+    // XXX (GW): I think we might still need `define` in the core syntax.
+    // Eg, the following cannot be translated to multiple letrec, but they
+    // can be a single letrec with multiple bindings (which we don't have yet either).
+    // (begin
+    //  (define (f x) (g x))
+    //  (define (g x) (+ x 1))
+    //  (f 3))
     case S.Define(x, rhs) => C.Letrec(x, translate(rhs), C.Void())
     case S.Begin(es) => translateSeq(es)

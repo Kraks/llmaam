@@ -10,7 +10,7 @@ case class Var(x: String) extends Expr with AtomExpr
 case class App(e1: Expr, param: List[Expr]) extends Expr with AtomExpr
 case class Lam(param: List[String], body: Expr) extends Expr with AtomExpr
 case class Bind(x: String, e: Expr) {
-  def toSet: Set_! = Set_!(x, e)
+  def toSet = SetVar(x, e)
 }
 
 case class Let(bds: List[Bind], body: Expr) extends Expr {
@@ -45,7 +45,7 @@ case class CaseBranch(cases: List[Expr], thn: Expr)
 case class Case(e: Expr, branches: List[CaseBranch]) extends Expr
 
 case class Void() extends Expr with AtomExpr
-case class Set_!(x: String, e: Expr) extends Expr with AtomExpr
+case class SetVar(x: String, e: Expr) extends Expr with AtomExpr
 case class Begin(es: List[Expr]) extends Expr
 case class Define(x: String, e: Expr) extends Expr
 
@@ -58,7 +58,7 @@ extension (e: Expr)
     case IntLit(x)    => x.toString
     case FloatLit(x)  => x.toString
     case BoolLit(x)   => if (x) "#t" else "#f"
-    case Set_!(x, e)  => s"(set! $x ${e.pretty})"
+    case SetVar(x, e)  => s"(set! $x ${e.pretty})"
     case Define(x, e) => s"(define $x ${e.pretty})"
     case App(x, l)    => s"(${(x::l).map(_.pretty).mkString(" ")})"
     case Begin(es)    => s"(begin ${es.map(_.pretty).mkString(" ")})"
@@ -75,7 +75,7 @@ extension (e: Expr)
     case IntLit(x)    => 1
     case FloatLit(x)  => 1
     case BoolLit(x)   => 1
-    case Set_!(x, e)  => 1 + e.size
+    case SetVar(x, e)  => 1 + e.size
     case Define(x, e) => 1 + e.size
     case App(x, l)    => 1 + x.size + l.foldLeft(0)(_ + _.size)
     case Begin(es)    => 1 + es.foldLeft(0)(_ + _.size)
@@ -85,7 +85,7 @@ extension (e: Expr)
 
   def defVars: Set[String] = e match {
     case Define(x, e) => Set(x) ++ e.defVars
-    case Set_!(x, e)  => e.defVars
+    case SetVar(x, e)  => e.defVars
     case App(x, l)    => x.defVars ++ l.map(_.defVars).foldLeft(Set[String]())(_ ++ _)
     case Begin(es)    => es.map(_.defVars).foldLeft(Set[String]())(_ ++ _)
     case If(c, t, e)  => c.defVars ++ t.defVars ++ e.defVars
@@ -102,7 +102,7 @@ extension (e: Expr)
       case IntLit(x)    => Set()
       case FloatLit(x)  => Set()
       case BoolLit(x)   => Set()
-      case Set_!(x, e)  => e.free
+      case SetVar(x, e)  => e.free
       case Define(x, e) => e.free - x
       case App(x, l)    => x.free ++ l.map(_.free).foldLeft(Set[String]())(_ ++ _)
       case Begin(es)    => es.map(_.free).foldLeft(Set[String]())(_ ++ _)
@@ -130,9 +130,9 @@ object AlphaRenamer {
       case IntLit(x)    => (e, map)
       case FloatLit(x)  => (e, map)
       case BoolLit(x)   => (e, map)
-      case Set_!(x, e)  =>
+      case SetVar(x, e)  =>
         val (ne, nm) = alpha(e, map)
-        (Set_!(map(x), ne), map)
+        (SetVar(map(x), ne), map)
       case Define(x, e) =>
         val name = if (map.contains(x)) map(x) else fresh()
         val nm = map + (x -> name)

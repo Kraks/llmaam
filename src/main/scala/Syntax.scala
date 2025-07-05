@@ -25,6 +25,7 @@ enum Expr:
   case If(cond: Expr, thn: Expr, els: Expr)
   case While(cond: Expr, body: Expr)
   case SetVar(x: String, rhs: Expr)
+  case Define(x: String, rhs: Expr)
 
   override def toString(): String = this match
     case Lit(n) => n match

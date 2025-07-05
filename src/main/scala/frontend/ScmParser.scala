@@ -104,8 +104,8 @@ object SchemeParser extends SchemeTokenParser {
     case idents ~ e => Define(idents.head, Lam(idents.tail, e))
   }
 
-  def set: Parser[Set_!] = LPAREN ~> SET ~> IDENT ~ implicit_begin <~ RPAREN ^^ {
-    case id ~ e => Set_!(id, e)
+  def set: Parser[SetVar] = LPAREN ~> SET ~> IDENT ~ implicit_begin <~ RPAREN ^^ {
+    case id ~ e => SetVar(id, e)
   }
 
   def begin: Parser[Begin] = LPAREN ~> BEGIN ~> expr.* <~ RPAREN ^^ {

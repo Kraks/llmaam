@@ -23,6 +23,7 @@ enum Kont:
   case KWhileCnd(cond: Expr, body: Expr, ρ: Env, k: KAddr)
   case KWhileBdy(cond: Expr, body: Expr, ρ: Env, k: KAddr)
   case KSet(x: String, rhs: Expr, ρ: Env, k: KAddr)
+  case KDefine(x: String, rhs: Expr, ρ: Env, k: KAddr)
 
 // The numerical abstract domain can be easily extended to
 // non-relational ones, but not obvious to extend to relational ones.
@@ -138,7 +139,6 @@ abstract class Analyzer:
       case VState(v, _, σᵥ, σₖ, KSet(x, rhs, ρ, k), t) =>
         ρ.get(x) match
           case Some(α) =>
-            val ρ1 = ρ + (x → α)
             val σᵥ1 = σᵥ ⊔ Map(α → Set(v))
             ("set-body", for { kont <- σₖ(k) } yield VState(UnitVal(), ρ, σᵥ1, σₖ, kont, t))
           case None =>
@@ -147,7 +147,7 @@ abstract class Analyzer:
         val σᵥ1 = σᵥ ⊔ Map(αₓ → Set(v))
         ("letrec-body", for { kont <- σₖ(k) } yield EState(e, ρ, σᵥ1, σₖ, kont, t))
       // KBegin
-      case VState(v, _, σᵥ, σₖ, KBegin(Nil, ρ, k), t) =>
+      case VState(v, ρ, σᵥ, σₖ, KBegin(Nil, _, k), t) =>
         ("begin-done", for { kont <- σₖ(k) } yield VState(v, ρ, σᵥ, σₖ, kont, t))
       case VState(_, _, σᵥ, σₖ, KBegin(exprs, ρ, k), t) =>
         ("begin-next", for { kont <- σₖ(k) } yield EState(Begin(exprs), ρ, σᵥ, σₖ, kont, t))
@@ -216,14 +216,10 @@ abstract class Analyzer:
         val αₖ = allocKont(s, rhs, ρ1, σᵥ1, t1)
         val σₖ1 = σₖ ⊔ Map(αₖ → Set(k))
         ("letrec-rhs", EState(rhs, ρ1, σᵥ1, σₖ1, KLetrec(x, αᵥ, ρ1, body, αₖ), t1))
-      case EState(e@Begin(exprs), ρ, σᵥ, σₖ, k, t) =>
-        exprs match
-          case e1::rest =>
-            val α = allocKont(s, e1, ρ, σᵥ, t1)
-            val σₖ1 = σₖ ⊔ Map(α → Set(k))
-            ("begin-exp", EState(e1, ρ, σᵥ, σₖ1, KBegin(rest, ρ, α), t1))
-          case Nil =>
-            ("begin-empty", VState(UnitVal(), ρ, σᵥ, σₖ, k, t1))
+      case EState(e@Begin(e1::rest), ρ, σᵥ, σₖ, k, t) =>
+        val α = allocKont(s, e1, ρ, σᵥ, t1)
+        val σₖ1 = σₖ ⊔ Map(α → Set(k))
+        ("begin-exp", EState(e1, ρ, σᵥ, σₖ1,  KBegin(rest, ρ, α) , t1))
       case EState(e@If(cond, thn, els), ρ, σᵥ, σₖ, k, t) =>
         val α = allocKont(s, cond, ρ, σᵥ, t1)
         val σₖ1 = σₖ ⊔ Map(α → Set(k))
@@ -236,6 +232,12 @@ abstract class Analyzer:
         val α = allocKont(s, rhs, ρ, σᵥ, t1)
         val σₖ1 = σₖ ⊔ Map(α → Set(k))
         ("set-rhs", EState(rhs, ρ, σᵥ, σₖ1, KSet(x, rhs, ρ, α), t1))
+      /*
+      case EState(e@Define(x, rhs), ρ, σᵥ, σₖ, k, t) =>
+        val α = allocKont(s, rhs, ρ, σᵥ, t1)
+        val σₖ1 = σₖ ⊔ Map(α → Set(k))
+        ("define-rhs", EState(rhs, ρ, σᵥ, σₖ1, KDefine(x, rhs, ρ, α), t1))
+      */
 
   def drive(todo: List[State], seen: Set[State]): Set[State] =
     if (todo.isEmpty) seen

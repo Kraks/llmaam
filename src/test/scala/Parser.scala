@@ -25,8 +25,8 @@ class TestParser extends FunSuite {
         Lam(List("a", "b"),
           Begin(
             List(
-              Set_!("a",IntLit(3)),
-              Set_!("b",Var("a")),
+              SetVar("a",IntLit(3)),
+              SetVar("b",Var("a")),
               App(Var("add"),List(Var("a"), Var("b")))
             )
           )
@@ -90,7 +90,7 @@ class TestParser extends FunSuite {
   test("desugar"):
     assert(IntLit(1).desugar == IntLit(1))
 
-    assert((Begin(List(Define("x", IntLit(2)), Set_!("x", IntLit(3)), Var("x")))).desugar.pretty ==
+    assert((Begin(List(Define("x", IntLit(2)), SetVar("x", IntLit(3)), Var("x")))).desugar.pretty ==
       "(begin (define x 2) (set! x 3) x)")
 
     assert(Cond(List(
