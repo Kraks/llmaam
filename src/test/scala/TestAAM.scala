@@ -22,7 +22,7 @@ class Playground extends FunSuite {
   //test("stack2 - 2cfa; p4f"):
   //  testAnalyzer(new Analyzer with KCFA(2) with P4FContAlloc, benchmarks.stack2, "stack2_2cfa_p4f")
 
-  testAnalyzer(new Analyzer with LLMAlloc with OpenAI, benchmarks.stack2, "stack2_openai")
+  //testAnalyzer(new Analyzer with LLMAlloc with OpenAI, benchmarks.stack2, "stack2_openai")
 }
 
 class TestAAM extends FunSuite {
@@ -43,9 +43,6 @@ class TestAAM extends FunSuite {
 
   test("beginscope"):
     testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.beginscope, "beginscope_0cfa")
-
-  test("beginnil"):
-    testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.beginnil, "beginnil_0cfa")
 
   test("if1"):
     testAnalyzer(new Analyzer with ZeroCFA with SrcContAlloc, benchmarks.if1, "if1_0cfa")
@@ -138,7 +135,6 @@ class TestSyntax extends FunSuite {
   test("syntax"):
     println(benchmarks.begin1)
     println(benchmarks.beginscope)
-    println(benchmarks.beginnil)
     println(benchmarks.if1)
     println(benchmarks.while1)
     println(benchmarks.while2)

@@ -97,6 +97,7 @@ let id = λx. x in
 id(1) + begin
 end
  */
+// Note: Racket/Scheme does not allow empty begin
 val beginnil = Let("id", Lam("x", Var("x")),
   BinOp("+",
     App(Var("id"), Lit(1)),

@@ -45,7 +45,7 @@ object AST2Core:
     case S.BoolLit(b) => C.Lit(b)
     case S.CharLit(c)  => C.Lit(c)
     case S.FloatLit(d) => C.Lit(d)
-    case S.SSym(s) => C.Lit(s)
+    case S.SSym(s) => C.App(C.Var("quote"), C.Lit(s))
     case S.Void() => C.Void()
     case S.Var(x)  => C.Var(x)
     case S.Lam(params, body) => curry(params, translate(body))
