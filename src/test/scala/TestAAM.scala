@@ -10,7 +10,7 @@ import dev.langchain4j.model.googleai.*
 import dev.langchain4j.model.openai.*
 
 def testAnalyzer[T <: Analyzer](analyzer: T, program: Expr, name: String, printNode: Boolean = true): Unit =
-  println(s"Running analysis for ${program}...")
+  //println(s"Running analysis for ${program}...")
   val states = analyzer.run(program)
   println(s"Analysis summary [${name}]: #State: ${states.size}, #Edges: ${analyzer.transitions.size}")
   val transitionStates = analyzer.transitions.foldLeft(Set[State]()) {
@@ -41,6 +41,9 @@ class Playground extends FunSuite {
 
 def benchmark(file: String, name: String): Unit = {
   val prog = SchemeParser.parseFile(file).get.toCore
+
+  testAnalyzer(new Analyzer with KCFA(1) with P4FContAlloc, prog, s"${name}_1cfa_p4f", false)
+  /*
   testAnalyzer(new Analyzer with KCFA(0) with P4FContAlloc, prog, s"${name}_0cfa_p4f", false)
   testAnalyzer(new Analyzer with KCFA(0) with AACContAlloc, prog, s"${name}_0cfa_aac", false)
   testAnalyzer(new Analyzer with KCFA(0) with SrcContAlloc, prog, s"${name}_0cfa_src", false)
@@ -51,7 +54,10 @@ def benchmark(file: String, name: String): Unit = {
   testAnalyzer(new Analyzer with KCFA(1) with P4FContAlloc, prog, s"${name}_1cfa_p4f", false)
   testAnalyzer(new Analyzer with KCFA(1) with TgtContAlloc, prog, s"${name}_1cfa_tgt", false)
 
-  //testAnalyzer(new Analyzer with LLMAlloc with OpenAI, prog, s"${name}_gpt4o", false)
+  testAnalyzer(new Analyzer with LLMAlloc with OpenAI, prog, s"${name}_gpt4o_try1", false)
+  testAnalyzer(new Analyzer with LLMAlloc with OpenAI, prog, s"${name}_gpt4o_try2", false)
+  testAnalyzer(new Analyzer with LLMAlloc with OpenAI, prog, s"${name}_gpt4o_try3", false)
+  */
 }
 
 class kcfa2 extends FunSuite {
@@ -82,7 +88,24 @@ class kcfa3 extends FunSuite {
   benchmark("benchmarks/kcfa/kcfa-worst-case-3.scm", "kcfa3")
 }
 
+class sat extends FunSuite {
+  benchmark("benchmarks/gcfa2/sat.scm", "sat")
+}
+
 class loop2 extends FunSuite {
+  /*
+  Analysis summary [loop2_0cfa_p4f]: #State: 110, #Edges: 108
+  Analysis summary [loop2_0cfa_aac]: #State: 110, #Edges: 108
+  Analysis summary [loop2_0cfa_src]: #State: 149, #Edges: 146
+  Analysis summary [loop2_0cfa_tgt]: #State: 219, #Edges: 215
+  Analysis summary [loop2_1cfa_src]: #State: 108, #Edges: 106
+  Analysis summary [loop2_1cfa_aac]: #State: 108, #Edges: 106
+  Analysis summary [loop2_1cfa_p4f]: #State: 108, #Edges: 106
+  Analysis summary [loop2_1cfa_tgt]: #State: 108, #Edges: 106
+  Analysis summary [loop2_gpt4o_try1]: #State: 108, #Edges: 106
+  Analysis summary [loop2_gpt4o_try2]: #State: 108, #Edges: 106
+  Analysis summary [loop2_gpt4o_try3]: #State: 108, #Edges: 106
+  */
   benchmark("benchmarks/gcfa2/loop2.scm", "loop2")
 }
 

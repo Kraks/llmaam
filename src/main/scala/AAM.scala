@@ -12,12 +12,9 @@ import Expr.*
 
 enum Kont:
   case KHalt()
-  case KUnaryOp(op: String, ρ: Env, k: KAddr)
-  case KBinOpR(op: String, rhs: Expr, ρ: Env, k: KAddr)
-  case KBinOpL(op: String, lhs: Value, k: KAddr)
+  case KPrimOp(op: String, vals: List[Value], rands: List[Expr], ρ: Env, k: KAddr)
   case KArg(e: Expr, ρ: Env, k: KAddr)
   case KFun(lam: Expr.Lam, ρ: Env, k: KAddr)
-  case KFunPrim(f: String, ρ: Env, k: KAddr)
   case KLet(x: String, ρ: Env, body: Expr, k: KAddr)
   case KLetrec(x: String, xa: BAddr, ρ: Env, body: Expr, k: KAddr)
   case KBegin(exprs: List[Expr], ρ: Env, k: KAddr)
@@ -26,6 +23,21 @@ enum Kont:
   case KWhileBdy(cond: Expr, body: Expr, ρ: Env, k: KAddr)
   case KSet(x: String, rhs: Expr, ρ: Env, k: KAddr)
   case KDefine(x: String, rhs: Expr, ρ: Env, k: KAddr)
+
+def kontName(k: Kont): String =
+  k match
+    case KHalt() => "Halt"
+    case KPrimOp(op, _, _, _, _) => s"KPrimOp(${op})"
+    case KArg(_, _, _) => "KArg"
+    case KFun(_, _, _) => "KFun"
+    case KLet(x, _, _, _) => s"KLet(${x})"
+    case KLetrec(x, _, _, _, _) => s"KLetrec(${x})"
+    case KBegin(_, _, _) => "KBegin"
+    case KIf(_, _, _, _) => "KIf"
+    case KWhileCnd(_, _, _, _) => "KWhileCnd"
+    case KWhileBdy(_, _, _, _) => "KWhileBdy"
+    case KSet(x, _, _, _) => s"KSet(${x})"
+    case KDefine(x, _, _, _) => s"KDefine(${x})"
 
 // The numerical abstract domain can be easily extended to
 // non-relational ones, but not obvious to extend to relational ones.
@@ -43,6 +55,7 @@ enum Value:
 
 import Value.*
 
+/*
 def evalUnaryOp(op: String, v: Value): Option[Value] = (op, v) match
   case (o, Num()) if arithUn(o) => Some(Num())
   case (o, Bool()) if logicUn(o) => Some(Bool())
@@ -53,6 +66,20 @@ def evalBinOp(op: String, v1: Value, v2: Value): Option[Value] =
     case (Num(), Num()) if arithBin(op) => Some(Num())
     case (Num(), Num()) if relBin(op) => Some(Bool())
     case (Bool(), Bool()) if logicBin(op) => Some(Bool())
+    case _ => None
+*/
+
+// TODO: need revise this impl
+def evalPrimOp(op: String, vs: List[Value]): Option[Value] =
+  op match
+    case "display" if vs.size == 1 => Some(UnitVal())
+    case "input" if vs.isEmpty => Some(Num())
+    case "not" if vs.size == 1 && vs.head.isInstanceOf[Bool] =>
+      Some(Bool())
+    case "and" if vs.forall(_.isInstanceOf[Bool]) => Some(Bool())
+    case "or" if vs.forall(_.isInstanceOf[Bool]) => Some(Bool())
+    case "=" if vs.size == 2 => Some(Bool())
+    case "list" | "quote" => Some(UnitVal())
     case _ => None
 
 // Addresses
@@ -94,7 +121,7 @@ abstract class Analyzer:
 
   def isAtomic(e: Expr): Boolean = e match
     case Lit(_) | Void() | Var(_) | Lam(_, _) => true
-    case UnaryOp(_, _) | BinOp(_, _, _)
+    case PrimOp(_, _)
         | App(_, _) | Let(_, _, _) | Letrec(_, _, _)
         | Begin(_) | If(_, _, _) | While(_, _)
         | SetVar(_, _) => false
@@ -104,19 +131,6 @@ abstract class Analyzer:
     case VState(e, _, _, _, KHalt(), _) => true
     case ErrState() => true
     case _ => false
-
-  def isPrim(f: String): Boolean = f match
-    case "display" | "input" | "not" | "=" => true
-    case _ => false
-
-  // TODO: refactor with evalUnaryOp and evalBinOp
-  def applyPrim(f: String, v: Value): Value =
-    f match
-      case "display" => UnitVal()
-      case "input" => Num()
-      case "not" => Bool()
-      case "=" => Bool()
-      case _ => ???
 
   def continue(s: VState): (Label, Set[State]) =
     s match
@@ -129,26 +143,15 @@ abstract class Analyzer:
         val ρ1 = ρ + (x → α)
         val σᵥ1 = σᵥ ⊔ Map(α → Set(v))
         ("app-red", for { kont <- σₖ(k) } yield EState(e, ρ1, σᵥ1, σₖ, kont, t))
-      case VState(v, _, σᵥ, σₖ, KFunPrim(f, ρ, k), t) =>
-        val res = applyPrim(f, v)
-        ("app-prim-red", for { kont <- σₖ(k) } yield VState(res, ρ, σᵥ, σₖ, kont, t))
-      // KUnaryOp expects the result is a Num/Bool
-      case VState(v, _, σᵥ, σₖ, KUnaryOp(op, ρ, k), t) =>
-        evalUnaryOp(op, v) match
+      case VState(v, _, σᵥ, σₖ, KPrimOp(op, vs, Nil, ρ, k), t) =>
+        evalPrimOp(op, vs ++ List(v)) match
           case Some(res) =>
-            ("op1-red", for { kont <- σₖ(k) } yield VState(res, ρ, σᵥ, σₖ, kont, t))
+            ("op-red", for { kont <- σₖ(k) } yield VState(res, Map(), σᵥ, σₖ, kont, t))
           case None =>
-            ("op1-err", ErrState()) // error if the operation is not applicable
-      // KBinOpR expects left-hand side is a Num/Bool
-      case VState(v, _, σᵥ, σₖ, KBinOpR(op, rhs, ρ, k), t) =>
-        ("op2-rhs", EState(rhs, ρ, σᵥ, σₖ, KBinOpL(op, v, k), t))
-      // KBinOpL (arithmetic/logic) can be applied to Num/Bool
-      case VState(vᵣ, _, σᵥ, σₖ, KBinOpL(op, vₗ, k), t) =>
-        evalBinOp(op, vₗ, vᵣ) match
-          case Some(res) =>
-            ("op2-red", for { kont <- σₖ(k) } yield VState(res, Map(), σᵥ, σₖ, kont, t))
-          case None =>
-            ("op2-type-error", ErrState())
+            ("op-type-error", ErrState())
+      case VState(v, _, σᵥ, σₖ, KPrimOp(op, vs, e::es, ρ, k), t) =>
+        ("primop-cont", EState(e, ρ, σᵥ, σₖ, KPrimOp(op, vs ++ List(v), es, ρ, k), t))
+
       case VState(v, _, σᵥ, σₖ, KLet(x, ρ, e, k), t) =>
         val α = allocBind(s, x, t)
         val ρ1 = ρ + (x → α)
@@ -190,7 +193,7 @@ abstract class Analyzer:
         ("while-continue", EState(cond, ρ, σᵥ, σₖ, KWhileCnd(cond, body, ρ, k), t))
       case _ =>
         val VState(v, _, _, _, k, _) = s
-        println(s"Potential error state: ${v} for continuation ${k}")
+        //println(s"Potential error state: ${v} for continuation ${k}")
         ("error", ErrState())
 
   def step(s: State): (Label, Set[State]) =
@@ -215,18 +218,10 @@ abstract class Analyzer:
       case EState(Lam(x, e), ρ, σᵥ, σₖ, k, t) =>
         ("lam", VState(Clo(Lam(x, e), ρ), ρ, σᵥ, σₖ, k, t1))
       // push continuation to KStore
-      case EState(e@UnaryOp(op, e1), ρ, σᵥ, σₖ, k, t) =>
+      case EState(e@PrimOp(op, e1::es), ρ, σᵥ, σₖ, k, t) =>
         val α = allocKont(s, e1, ρ, σᵥ, t1)
         val σₖ1 = σₖ ⊔ Map(α → Set(k))
-        ("op1-exp", EState(e, ρ, σᵥ, σₖ1, KUnaryOp(op, ρ, α), t1))
-      case EState(e@BinOp(op, e1, e2), ρ, σᵥ, σₖ, k, t) =>
-        val α = allocKont(s, e1, ρ, σᵥ, t1)
-        val σₖ1 = σₖ ⊔ Map(α → Set(k))
-        ("op2-lhs", EState(e1, ρ, σᵥ, σₖ1, KBinOpR(op, e2, ρ, α), t1))
-      case EState(e@App(Var(f), arg), ρ, σᵥ, σₖ, k, t) if isPrim(f) =>
-        val α = allocKont(s, arg, ρ, σᵥ, t1)
-        val σₖ1 = σₖ ⊔ Map(α → Set(k))
-        ("app-prim", EState(arg, ρ, σᵥ, σₖ1, KFunPrim(f, ρ, α), t1))
+        ("op2-lhs", EState(e1, ρ, σᵥ, σₖ1, KPrimOp(op, List(), es, ρ, α), t1))
       case EState(e@App(f, arg), ρ, σᵥ, σₖ, k, t) =>
         val α = allocKont(s, f, ρ, σᵥ, t1)
         //println(s"Allocating continuation for ${e} at ${α}")
@@ -317,7 +312,7 @@ abstract class Analyzer:
           case EState(e, ρ, σᵥ, σₖ, k, t) =>
             writer.println(s"""  ${n} [label="${n}|EState(${e})"];""")
           case VState(v, ρ, σᵥ, σₖ, k, t) =>
-            writer.println(s"""  ${n} [label="${n}|VState(${v})"];""")
+            writer.println(s"""  ${n} [label="${n}|VState(${v}, ${kontName(k)})"];""")
           case ErrState() =>
             writer.println(s"""  ${n} [label="${n}|ErrState()"];""")
     }

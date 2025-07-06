@@ -1,6 +1,10 @@
 package llmaam.benchmarks
 
+import llmaam.syntax.Expr
 import llmaam.syntax.Expr.*
+
+def BinOp(op: String, left: Expr, right: Expr): Expr = PrimOp(op, List(left, right))
+def UnaryOp(op: String, operand: Expr): Expr = PrimOp(op, List(operand))
 
 val app1 = App(
   Lam("x", BinOp("+", Var("x"), Lit(1))),

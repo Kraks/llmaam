@@ -4,18 +4,19 @@ package llmaam.syntax
 
 val arithBin  = Set("+", "-", "*", "/", "%")
 val arithUn   = Set("+", "-")
-val relBin    = Set(">", "<", ">=", "<=", "==", "!=")
-val logicBin  = Set("&", "|")
-val logicUn   = Set("!")
+val relBin    = Set(">", "<", ">=", "<=", "==", "!=", "=")
+val logicBin  = Set("&", "|", "and", "or")
+val logicUn   = Set("!", "not")
+val prim      = Set("list", "quote")
 
 inline def isUnary(op: String): Boolean = arithUn(op) || logicUn(op)
 inline def isBinary(op: String): Boolean = arithBin(op) || relBin(op) || logicBin(op)
+inline def isPrim(op: String): Boolean = prim(op) || isUnary(op) || isBinary(op)
 
 enum Expr:
   case Lit(n: Int | Boolean | Double | Char | String)
   case Void()
-  case UnaryOp(op: String, arg: Expr)
-  case BinOp(op: String, lhs: Expr, rhs: Expr)
+  case PrimOp(op: String, operands: List[Expr])
   case Var(x: String)
   case Lam(x: String, body: Expr)
   case App(f: Expr, arg: Expr)
@@ -33,8 +34,7 @@ enum Expr:
       case _: String => s""""$n""""
       case _ => n.toString
     case Void() => "(void)"
-    case UnaryOp(op, arg) => s"($op $arg)"
-    case BinOp(op, lhs, rhs) => s"($lhs $op $rhs)"
+    case PrimOp(op, rands) => s"($op $rands)"
     case Var(x) => x
     case Lam(x, body) => s"(λ$x. $body)"
     case App(f, arg) => s"($f $arg)"

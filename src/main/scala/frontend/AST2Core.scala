@@ -3,7 +3,7 @@ package llmaam.frontend.scm
 import llmaam.frontend.scm as S // Scheme AST
 
 import llmaam.syntax.Expr as C // Core Syntax
-import llmaam.syntax.{isUnary, isBinary} // Core Syntax utilities
+import llmaam.syntax.{isPrim}
 
 extension (e: S.Expr)
   def toCore: C = AST2Core(e)
@@ -48,18 +48,12 @@ object AST2Core:
     case S.BoolLit(b) => C.Lit(b)
     case S.CharLit(c)  => C.Lit(c)
     case S.FloatLit(d) => C.Lit(d)
-    case S.SSym(s) => C.App(C.Var("quote"), C.Lit(s))
+    case S.SSym(s) => C.PrimOp("quote", List(C.Lit(s)))
     case S.Void() => C.Void()
     case S.Var(x)  => C.Var(x)
     case S.Lam(params, body) => curry(params, translate(body))
-    case S.App(fun, args) =>
-      (fun, args) match
-        case (S.Var(op), a :: Nil) if isUnary(op) =>
-          C.UnaryOp(op, translate(a))
-        case (S.Var(op), a :: b :: Nil) if isBinary(op) =>
-          C.BinOp(op, translate(a), translate(b))
-        case _ =>
-          apps(translate(fun), args.map(translate))
+    case S.App(Var(f), args) if isPrim(f) => C.PrimOp(f, args.map(translate))
+    case S.App(fun, args) => apps(translate(fun), args.map(translate))
     case S.SetVar(x, rhs) => C.SetVar(x, translate(rhs))
     case S.If(c, t, el) => C.If(translate(c), translate(t), translate(el))
     // Let and Letrec

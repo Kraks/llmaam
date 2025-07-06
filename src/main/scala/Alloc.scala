@@ -50,6 +50,12 @@ trait TgtContAlloc:
     val EState(e, _, _, _, _, _) = s
     KAddr(List(e1, t))
 
+trait SrcTgtContAlloc:
+  self: Analyzer =>
+  def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr =
+    val EState(e, _, _, _, _, _) = s
+    KAddr(List(e1, e, t))
+
 trait P4FContAlloc:
   self: Analyzer =>
   def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr =
@@ -60,4 +66,4 @@ trait AACContAlloc:
   self: Analyzer =>
   def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr =
     val EState(e, ρ, σ, _, _, _) = s
-    KAddr(List(e1, ρ1, e, ρ, σ, t)) // XXX: is ρ necessary?
+    KAddr(List(e1, ρ1, e, ρ, σ)) // XXX: is ρ necessary?
