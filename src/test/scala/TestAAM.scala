@@ -37,7 +37,9 @@ class Playground extends FunSuite {
   testAnalyzer(new Analyzer with KCFA(0) with SrcContAlloc, kcfa5, "kcfa5_0cfa_src", false)
   testAnalyzer(new Analyzer with KCFA(0) with TgtContAlloc, kcfa5, "kcfa5_0cfa_tgt", false)
   */
+}
 
+class kcfa2 extends FunSuite {
   val kcfa2 = SchemeParser.parseFile("benchmarks/kcfa/kcfa-worst-case-2.scm").get.toCore
   // Analysis summary [kcfa2_0cfa_p4f]: #State: 307, #Edges: 306
   testAnalyzer(new Analyzer with KCFA(0) with P4FContAlloc, kcfa2, "kcfa2_0cfa_p4f", false)
@@ -55,15 +57,35 @@ class Playground extends FunSuite {
   // XXX: those two are prohibitively slow (didn't finish in 3000+ seconds)
   //testAnalyzer(new Analyzer with KCFA(1) with P4FContAlloc, kcfa2, "kcfa2_1cfa_p4f", false)
   //testAnalyzer(new Analyzer with KCFA(1) with TgtContAlloc, kcfa2, "kcfa2_1cfa_tgt", false)
-}
 
-class Playground2 extends FunSuite {
-  val kcfa2 = SchemeParser.parseFile("benchmarks/kcfa/kcfa-worst-case-2.scm").get.toCore
+  //gpt-o4-mini
   //Analysis summary [kcfa2_gpt4o]: #State: 133, #Edges: 131
   //Analysis summary [kcfa2_gpt40]: #State: 153, #Edges: 150
   //Analysis summary [kcfa2_gpt4o]: #State: 312, #Edges: 303
   //Analysis summary [kcfa2_gpt4o]: #State: 272, #Edges: 265
   testAnalyzer(new Analyzer with LLMAlloc with OpenAI, kcfa2, "kcfa2_gpt4o", false)
+}
+
+class idid extends FunSuite {
+  //Analysis summary [stack2_0cfa_p4f]: #State: 42, #Edges: 41
+  testAnalyzer(new Analyzer with KCFA(0) with P4FContAlloc, benchmarks.stack2, "stack2_0cfa_p4f")
+  //Analysis summary [stack2_0cfa_aac]: #State: 33, #Edges: 32
+  testAnalyzer(new Analyzer with KCFA(0) with AACContAlloc, benchmarks.stack2, "stack2_0cfa_aac")
+  //Analysis summary [stack2_0cfa_srccont]: #State: 42, #Edges: 41
+  testAnalyzer(new Analyzer with KCFA(0) with SrcContAlloc, benchmarks.stack2, "stack2_0cfa_srccont")
+
+  //Analysis summary [stack2_1cfa_p4f]: #State: 33, #Edges: 32
+  testAnalyzer(new Analyzer with KCFA(1) with P4FContAlloc, benchmarks.stack2, "stack2_1cfa_p4f")
+  //Analysis summary [stack2_1cfa_aac]: #State: 33, #Edges: 32
+  testAnalyzer(new Analyzer with KCFA(1) with AACContAlloc, benchmarks.stack2, "stack2_1cfa_aac")
+  //Analysis summary [stack2_1cfa_srccont]: #State: 42, #Edges: 41
+  testAnalyzer(new Analyzer with KCFA(1) with SrcContAlloc, benchmarks.stack2, "stack2_1cfa_srccont")
+
+  //Analysis summary [kcfa2_gpt4o_try1]: #State: 33, #Edges: 32
+  //Analysis summary [kcfa2_gpt4o_try2]: #State: 33, #Edges: 32
+  //Analysis summary [kcfa2_gpt4o_try3]: #State: 33, #Edges: 32
+  //Analysis summary [kcfa2_gpt4o_try4]: #State: 33, #Edges: 32
+  testAnalyzer(new Analyzer with LLMAlloc with OpenAI, benchmarks.stack2, "kcfa2_gpt4o_try1", false)
 }
 
 class TestAAM extends FunSuite {
