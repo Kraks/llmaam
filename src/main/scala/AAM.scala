@@ -17,6 +17,7 @@ enum Kont:
   case KBinOpL(op: String, lhs: Value, k: KAddr)
   case KArg(e: Expr, ρ: Env, k: KAddr)
   case KFun(lam: Expr.Lam, ρ: Env, k: KAddr)
+  case KFunPrim(f: String, ρ: Env, k: KAddr)
   case KLet(x: String, ρ: Env, body: Expr, k: KAddr)
   case KLetrec(x: String, xa: BAddr, ρ: Env, body: Expr, k: KAddr)
   case KBegin(exprs: List[Expr], ρ: Env, k: KAddr)
@@ -104,6 +105,19 @@ abstract class Analyzer:
     case ErrState() => true
     case _ => false
 
+  def isPrim(f: String): Boolean = f match
+    case "display" | "input" | "not" | "=" => true
+    case _ => false
+
+  // TODO: refactor with evalUnaryOp and evalBinOp
+  def applyPrim(f: String, v: Value): Value =
+    f match
+      case "display" => UnitVal()
+      case "input" => Num()
+      case "not" => Bool()
+      case "=" => Bool()
+      case _ => ???
+
   def continue(s: VState): (Label, Set[State]) =
     s match
       // KArg expects a closure value
@@ -115,6 +129,9 @@ abstract class Analyzer:
         val ρ1 = ρ + (x → α)
         val σᵥ1 = σᵥ ⊔ Map(α → Set(v))
         ("app-red", for { kont <- σₖ(k) } yield EState(e, ρ1, σᵥ1, σₖ, kont, t))
+      case VState(v, _, σᵥ, σₖ, KFunPrim(f, ρ, k), t) =>
+        val res = applyPrim(f, v)
+        ("app-prim-red", for { kont <- σₖ(k) } yield VState(res, ρ, σᵥ, σₖ, kont, t))
       // KUnaryOp expects the result is a Num/Bool
       case VState(v, _, σᵥ, σₖ, KUnaryOp(op, ρ, k), t) =>
         evalUnaryOp(op, v) match
@@ -171,6 +188,10 @@ abstract class Analyzer:
           yield state)
       case VState(_, _, σᵥ, σₖ, KWhileBdy(cond, body, ρ, k), t) =>
         ("while-continue", EState(cond, ρ, σᵥ, σₖ, KWhileCnd(cond, body, ρ, k), t))
+      case _ =>
+        val VState(v, _, _, _, k, _) = s
+        println(s"Potential error state: ${v} for continuation ${k}")
+        ("error", ErrState())
 
   def step(s: State): (Label, Set[State]) =
     val t1 = tick(s)
@@ -189,6 +210,7 @@ abstract class Analyzer:
           case Some(α) =>
             ("var", σᵥ(α).map { VState(_, ρ, σᵥ, σₖ, k, t1) })
           case None =>
+            println(s"Unbound variable: ${x}")
             ("var-unbound", ErrState())
       case EState(Lam(x, e), ρ, σᵥ, σₖ, k, t) =>
         ("lam", VState(Clo(Lam(x, e), ρ), ρ, σᵥ, σₖ, k, t1))
@@ -201,6 +223,10 @@ abstract class Analyzer:
         val α = allocKont(s, e1, ρ, σᵥ, t1)
         val σₖ1 = σₖ ⊔ Map(α → Set(k))
         ("op2-lhs", EState(e1, ρ, σᵥ, σₖ1, KBinOpR(op, e2, ρ, α), t1))
+      case EState(e@App(Var(f), arg), ρ, σᵥ, σₖ, k, t) if isPrim(f) =>
+        val α = allocKont(s, arg, ρ, σᵥ, t1)
+        val σₖ1 = σₖ ⊔ Map(α → Set(k))
+        ("app-prim", EState(arg, ρ, σᵥ, σₖ1, KFunPrim(f, ρ, α), t1))
       case EState(e@App(f, arg), ρ, σᵥ, σₖ, k, t) =>
         val α = allocKont(s, f, ρ, σᵥ, t1)
         //println(s"Allocating continuation for ${e} at ${α}")
@@ -243,6 +269,7 @@ abstract class Analyzer:
   @tailrec final def drive(todo: List[State], seen: Set[State]): Set[State] =
     if (todo.isEmpty) seen
     else
+      //println(s"Todo: ${todo.size}, Seen: ${seen.size}")
       val s::rest = todo
       if seen(s) then drive(rest, seen)
       else if isDone(s) then drive(rest, seen + s)

@@ -39,31 +39,51 @@ class Playground extends FunSuite {
   */
 }
 
+def benchmark(file: String, name: String): Unit = {
+  val prog = SchemeParser.parseFile(file).get.toCore
+  testAnalyzer(new Analyzer with KCFA(0) with P4FContAlloc, prog, s"${name}_0cfa_p4f", false)
+  testAnalyzer(new Analyzer with KCFA(0) with AACContAlloc, prog, s"${name}_0cfa_aac", false)
+  testAnalyzer(new Analyzer with KCFA(0) with SrcContAlloc, prog, s"${name}_0cfa_src", false)
+  testAnalyzer(new Analyzer with KCFA(0) with TgtContAlloc, prog, s"${name}_0cfa_tgt", false)
+
+  testAnalyzer(new Analyzer with KCFA(1) with SrcContAlloc, prog, s"${name}_1cfa_src", false)
+  testAnalyzer(new Analyzer with KCFA(1) with AACContAlloc, prog, s"${name}_1cfa_aac", false)
+  testAnalyzer(new Analyzer with KCFA(1) with P4FContAlloc, prog, s"${name}_1cfa_p4f", false)
+  testAnalyzer(new Analyzer with KCFA(1) with TgtContAlloc, prog, s"${name}_1cfa_tgt", false)
+
+  //testAnalyzer(new Analyzer with LLMAlloc with OpenAI, prog, s"${name}_gpt4o", false)
+}
+
 class kcfa2 extends FunSuite {
-  val kcfa2 = SchemeParser.parseFile("benchmarks/kcfa/kcfa-worst-case-2.scm").get.toCore
   // Analysis summary [kcfa2_0cfa_p4f]: #State: 307, #Edges: 306
-  testAnalyzer(new Analyzer with KCFA(0) with P4FContAlloc, kcfa2, "kcfa2_0cfa_p4f", false)
   // Analysis summary [kcfa2_0cfa_aac]: #State: 203, #Edges: 202
-  testAnalyzer(new Analyzer with KCFA(0) with AACContAlloc, kcfa2, "kcfa2_0cfa_aac", false)
   // Analysis summary [kcfa2_0cfa_src]: #State: 246, #Edges: 245
-  testAnalyzer(new Analyzer with KCFA(0) with SrcContAlloc, kcfa2, "kcfa2_0cfa_src", false)
   // Analysis summary [kcfa2_0cfa_tgt]: #State: 307, #Edges: 306
-  testAnalyzer(new Analyzer with KCFA(0) with TgtContAlloc, kcfa2, "kcfa2_0cfa_tgt", false)
 
   // Analysis summary [kcfa2_1cfa_src]: #State: 12189, #Edges: 12117
-  testAnalyzer(new Analyzer with KCFA(1) with SrcContAlloc, kcfa2, "kcfa2_1cfa_src", false)
   // Analysis summary [kcfa2_1cfa_aac]: #State: 336, #Edges: 324
-  testAnalyzer(new Analyzer with KCFA(1) with AACContAlloc, kcfa2, "kcfa2_1cfa_aac", false)
-  // XXX: those two are prohibitively slow (didn't finish in 3000+ seconds)
-  //testAnalyzer(new Analyzer with KCFA(1) with P4FContAlloc, kcfa2, "kcfa2_1cfa_p4f", false)
-  //testAnalyzer(new Analyzer with KCFA(1) with TgtContAlloc, kcfa2, "kcfa2_1cfa_tgt", false)
+  // Analysis summary [kcfa2_1cfa_p4f]: TO
+  // Analysis summary [kcfa2_1cfa_tgt]: TO
 
-  //gpt-o4-mini
   //Analysis summary [kcfa2_gpt4o]: #State: 133, #Edges: 131
   //Analysis summary [kcfa2_gpt40]: #State: 153, #Edges: 150
   //Analysis summary [kcfa2_gpt4o]: #State: 312, #Edges: 303
   //Analysis summary [kcfa2_gpt4o]: #State: 272, #Edges: 265
-  testAnalyzer(new Analyzer with LLMAlloc with OpenAI, kcfa2, "kcfa2_gpt4o", false)
+  benchmark("benchmarks/kcfa/kcfa-worst-case-2.scm", "kcfa2")
+}
+
+class kcfa3 extends FunSuite {
+  // Analysis summary [kcfa3_0cfa_p4f]: #State: 651, #Edges: 650
+  // Analysis summary [kcfa3_0cfa_aac]: #State: 550, #Edges: 549
+  // Analysis summary [kcfa3_0cfa_src]: #State: 517, #Edges: 516
+
+  // XXX: others are too slow... since the benchmark is designed to be
+  // worst-case (to the top of the lattice)...
+  benchmark("benchmarks/kcfa/kcfa-worst-case-3.scm", "kcfa3")
+}
+
+class loop2 extends FunSuite {
+  benchmark("benchmarks/gcfa2/loop2.scm", "loop2")
 }
 
 class idid extends FunSuite {
