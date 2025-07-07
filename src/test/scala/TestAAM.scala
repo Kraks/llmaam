@@ -42,8 +42,6 @@ class Playground extends FunSuite {
 def benchmark(file: String, name: String): Unit = {
   val prog = SchemeParser.parseFile(file).get.toCore
 
-  testAnalyzer(new Analyzer with KCFA(1) with P4FContAlloc, prog, s"${name}_1cfa_p4f", false)
-  /*
   testAnalyzer(new Analyzer with KCFA(0) with P4FContAlloc, prog, s"${name}_0cfa_p4f", false)
   testAnalyzer(new Analyzer with KCFA(0) with AACContAlloc, prog, s"${name}_0cfa_aac", false)
   testAnalyzer(new Analyzer with KCFA(0) with SrcContAlloc, prog, s"${name}_0cfa_src", false)
@@ -54,10 +52,12 @@ def benchmark(file: String, name: String): Unit = {
   testAnalyzer(new Analyzer with KCFA(1) with P4FContAlloc, prog, s"${name}_1cfa_p4f", false)
   testAnalyzer(new Analyzer with KCFA(1) with TgtContAlloc, prog, s"${name}_1cfa_tgt", false)
 
+  // Analysis summary [mj09_gpt4o_try2]: #State: 199, #Edges: 202
+  // Analysis summary [mj09_gpt4o_try2]: #State: 268, #Edges: 259
+  // Analysis summary [mj09_gpt4o_try3]: #State: 281, #Edges: 273
   testAnalyzer(new Analyzer with LLMAlloc with OpenAI, prog, s"${name}_gpt4o_try1", false)
   testAnalyzer(new Analyzer with LLMAlloc with OpenAI, prog, s"${name}_gpt4o_try2", false)
   testAnalyzer(new Analyzer with LLMAlloc with OpenAI, prog, s"${name}_gpt4o_try3", false)
-  */
 }
 
 class kcfa2 extends FunSuite {
@@ -86,6 +86,10 @@ class kcfa3 extends FunSuite {
   // XXX: others are too slow... since the benchmark is designed to be
   // worst-case (to the top of the lattice)...
   benchmark("benchmarks/kcfa/kcfa-worst-case-3.scm", "kcfa3")
+}
+
+class mj09 extends FunSuite {
+  benchmark("benchmarks/gcfa2/mj09.scm", "mj09")
 }
 
 class sat extends FunSuite {
