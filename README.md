@@ -1,4 +1,6 @@
-## LLM-Driven Sound Abstract Interpretation
+## Hallucination-Resilient LLM-Driven Sound Abstract Interpretation
+
+Prototype abstract interpreter using LLMs to improve precision while maintaining soundness.
 
 ### Get Started
 
@@ -7,8 +9,9 @@ using command `compile`, run a main function using `run`, execute all test
 cases using `test`.
 You can also run a specific test given the package path, e.g. `testOnly llmaam.aam.TestAAM`.
 
-Currently, the code base only supports Google Gemini API.
-You need to put a Google Gemini API key in file `GEMINI_AI_KEY`.
+Currently, the code base supports Google Gemini and OpenAI API.
+You need to put a Google Gemini API key in file `GEMINI_AI_KEY` or
+OpenAI API in file `OPENAI_API_KEY`.
 
 ### Examples
 
@@ -39,13 +42,14 @@ See the system prompt and conversion with LLM [here](examples/stack2_gemini25_ju
 
 ### TODO
 
-- [x] tweak prompt (LLMAllocator) so that the response can be reified back to Scala code
+- [x] tweak prompt so that the response can be reified back to Scala code
 - [x] OpenAI support
+- [x] support conditionals and boolean
+- [x] support loops
+- [x] support mutable states
+- [x] make use of ErrState (eg. adding a function with a number produce ErrState)
+- [x] a Scheme parser (to handle some [benchmarks](https://github.com/TimWhiting/context-sensitive-demand-cfa/tree/main/evaluation/benchmarks))
+- [ ] Refactor desugaring from Scheme to core syntax
 - [ ] Deepseek, QWen API support
 - [ ] Give better prompt (eg existing strategy etc) to guide LLM make better decisions
-- [ ] support conditionals and boolean
-- [ ] support loops
-- [ ] support mutable states
 - [ ] support call/cc
-- [ ] make use of ErrState (eg. adding a function with a number produce ErrState)
-- [ ] a Scheme parser (to handle some [benchmarks](https://github.com/TimWhiting/context-sensitive-demand-cfa/tree/main/evaluation/benchmarks))
