@@ -15,6 +15,31 @@ class TestParser extends FunSuite {
     val e2 = If(BoolLit(false), Var("a"), Lam(List("t"), Var("t")))
     assert(e2.pretty == "(if #f a (lambda (t) t))")
 
+  test("pretty-print cond clauses and case datums"):
+    val forms = List(
+      "(cond)",
+      "(cond ((probe)) ((test) => receive) (#t first) (else last))",
+      "(case x)",
+      "(case x ((less more) (cond (ok))) (((a b) (c . d) #(e f) ()) y) (else z))"
+    )
+    forms.foreach { source =>
+      val ast = SchemeParser(source).get
+      assertEquals(ast.pretty, source)
+      assertEquals(SchemeParser(ast.pretty), Some(ast))
+    }
+
+  test("pretty-print binding forms and named characters"):
+    val bs = List(Bind("x", CharLit(' ')), Bind("y", CharLit('\n')))
+    val body = App(Var("f"), List(Var("x"), Var("y")))
+    assertEquals(Let(bs, body).pretty, "(let ((x #\\space) (y #\\newline)) (f x y))")
+    assertEquals(Lrc(bs, body).pretty, "(letrec ((x #\\space) (y #\\newline)) (f x y))")
+
+  test("printing generated identifiers preserves user bindings"):
+    val source = "(lambda ($tmp-or) (or x $tmp-or))"
+    val expected = "(lambda ($tmp-or) ((lambda ($$tmp-or) (if $$tmp-or $$tmp-or $tmp-or)) x))"
+    assertEquals(SchemeParser(source).get.pretty, expected)
+    assertEquals(SchemeParser(expected).get.pretty, expected)
+
   test("quasiquote"):
     assert(SchemeParser("'xxxx") == Some(SSym("xxxx")))
     assert(SchemeParser("`(a 1 ,(a b))") == Some(App(Var("list"),List(SSym("a"), IntLit(1), App(Var("a"),List(Var("b")))))))
@@ -133,20 +158,24 @@ class TestParser extends FunSuite {
     assertEquals(lowered("(and)"), Some("#t"))
     assertEquals(lowered("(or)"), Some("#f"))
     assertEquals(lowered("(and x y)"), Some("(if x y #f)"))
-    assertEquals(lowered("(or (f) $0)"), Some("((lambda (#:or) (if #:or #:or $0)) (f))"))
+    assertEquals(lowered("(or (f) $0)"), Some("((lambda ($tmp-or) (if $tmp-or $tmp-or $0)) (f))"))
     assertEquals(lowered("(if x y)"), Some("(if x y (void))"))
     assertEquals(lowered("(cond ((f) => g) (x))"),
-      Some("((lambda (#:cond) (if #:cond (g #:cond) ((lambda (#:cond) (if #:cond #:cond (void))) x))) (f))"))
+      Some("((lambda ($tmp-cond) (if $tmp-cond (g $tmp-cond) ((lambda ($tmp-cond) (if $tmp-cond $tmp-cond (void))) x))) (f))"))
     assertEquals(lowered("(case (f) ((a) x) (() y) (else z))"),
-      Some("((lambda (#:case) (if (eqv? #:case 'a) x z)) (f))"))
+      Some("((lambda ($tmp-case) (if (eqv? $tmp-case 'a) x z)) (f))"))
 
   val benchmarks = Using.resource(Files.walk(Path.of("benchmarks"))) { paths =>
     paths.iterator.asScala.filter(_.toString.matches(".*\\.(scm|sch)")).toList.sorted
   }
 
   benchmarks.foreach { path =>
-    test(s"parse $path"):
-      assert(SchemeParser.parseFile(path.toString).isDefined)
+    test(s"parse and pretty-print $path"):
+      val ast = SchemeParser.parseFile(path.toString).getOrElse(fail(s"Could not parse $path"))
+      for tree <- List(ast, ast.desugar) do
+        val printed = tree.pretty
+        val reparsed = SchemeParser(printed).getOrElse(fail(s"Could not reparse the output for $path"))
+        assertEquals(reparsed.pretty, printed)
   }
 
 }
@@ -169,7 +198,7 @@ class TestDesugar extends FunSuite {
     assert(Case(IntLit(3), List(
         CaseBranch(List(IntLit(3), IntLit(4), IntLit(5)), BoolLit(true)),
         CaseBranch(List(App(Lam(List(), IntLit(7)), List()), IntLit(6)), BoolLit(false)))).desugar.pretty ==
-      "((lambda (#:case) (if (eqv? #:case 3) #t (if (eqv? #:case 4) #t (if (eqv? #:case 5) #t (if (eqv? #:case ((lambda () 7))) #f (if (eqv? #:case 6) #f (void))))))) 3)")
+      "((lambda ($tmp-case) (if (eqv? $tmp-case 3) #t (if (eqv? $tmp-case 4) #t (if (eqv? $tmp-case 5) #t (if (eqv? $tmp-case ((lambda () 7))) #f (if (eqv? $tmp-case 6) #f (void))))))) 3)")
 
     val Some(ast) = SchemeParser("(define (pow a b) (if (eq? b 0) 1 (* a (pow a (- b 1))))) (pow 3 5)")
     assert(ast.desugar.pretty ==

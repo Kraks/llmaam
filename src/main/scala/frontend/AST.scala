@@ -49,25 +49,66 @@ case class SetVar(x: String, e: Expr) extends Expr with AtomExpr
 case class Begin(es: List[Expr]) extends Expr
 case class Define(x: String, e: Expr) extends Expr
 
-extension (e: Expr)
-  def pretty: String = e match
-    case SyntaxForm(datum) => datum.pretty
-    case RestLam(params, rest, body) =>
-      val formals = if params.isEmpty then rest else (params :+ "." :+ rest).mkString("(", " ", ")")
-      s"(lambda $formals ${body.pretty})"
-    case Var(x) => x
+private def renderScheme(e: Expr, generatedPrefix: String): String =
+  def name(x: String): String =
+    if x.startsWith("#:") then generatedPrefix + x.drop(2) else x
+
+  def render(x: Expr): String = renderScheme(x, generatedPrefix)
+  def parens(xs: List[String]): String = xs.mkString("(", " ", ")")
+  def bindings(bs: List[Bind]): String = parens(bs.map(b => parens(List(name(b.x), render(b.e)))))
+
+  // A case key is already in datum context. Undo the reader's list, pair and vector encoding.
+  def datum(x: Expr): String = x match
+    case SSym(s) => s
+    case App(Var("list"), xs) => parens(xs.map(datum))
+    case App(Var("cons"), List(a, d)) => s"(${datum(a)} . ${datum(d)})"
+    case App(Var("vector"), xs) => "#" + parens(xs.map(datum))
+    case other => render(other)
+
+  e match
+    case SyntaxForm(d) => d.pretty
+    case Var(x) => name(x)
     case Void() => "(void)"
     case SSym(x) => "'" + x
-    case CharLit(x)   => "#\\" + x
-    case IntLit(x)    => x.toString
-    case FloatLit(x)  => x.toString
-    case BoolLit(x)   => if (x) "#t" else "#f"
-    case SetVar(x, e)  => s"(set! $x ${e.pretty})"
-    case Define(x, e) => s"(define $x ${e.pretty})"
-    case App(x, l)    => s"(${(x::l).map(_.pretty).mkString(" ")})"
-    case Begin(es)    => s"(begin ${es.map(_.pretty).mkString(" ")})"
-    case If(c, t, e)  => s"(if ${c.pretty} ${t.pretty} ${e.pretty})"
-    case Lam(params, body) => s"(lambda (${params.mkString(" ")}) ${body.pretty})"
+    case CharLit(' ') => "#\\space"
+    case CharLit('\n') => "#\\newline"
+    case CharLit(c) => "#\\" + c
+    case IntLit(n) => n.toString
+    case FloatLit(n) => n.toString
+    case BoolLit(b) => if b then "#t" else "#f"
+    case SetVar(x, rhs) => s"(set! ${name(x)} ${render(rhs)})"
+    case Define(x, rhs) => s"(define ${name(x)} ${render(rhs)})"
+    case App(f, args) => parens(render(f) :: args.map(render))
+    case Begin(es) => parens("begin" :: es.map(render))
+    case If(c, t, f) => s"(if ${render(c)} ${render(t)} ${render(f)})"
+    case Lam(params, body) => s"(lambda ${parens(params.map(name))} ${render(body)})"
+    case RestLam(params, rest, body) =>
+      val formals = if params.isEmpty then name(rest) else parens(params.map(name) ++ List(".", name(rest)))
+      s"(lambda $formals ${render(body)})"
+    case Let(bs, body) => s"(let ${bindings(bs)} ${render(body)})"
+    case Lrc(bs, body) => s"(letrec ${bindings(bs)} ${render(body)})"
+    case Cond(bs) =>
+      val last = bs.length - 1
+      val clauses = bs.zipWithIndex.map {
+        case (CondBr(BoolLit(true), rhs), `last`) => s"(else ${render(rhs)})"
+        case (CondBr(c, rhs), _) => s"(${render(c)} ${render(rhs)})"
+        case (CondProcBr(c, f), _) => s"(${render(c)} => ${render(f)})"
+        case (CondTest(c), _) => s"(${render(c)})"
+      }
+      parens("cond" :: clauses)
+    case Case(key, bs, otherwise) =>
+      val clauses = bs.map(b => s"(${parens(b.cases.map(datum))} ${render(b.thn)})")
+      val fallback = Option.when(otherwise != Void())(s"(else ${render(otherwise)})")
+      parens("case" :: render(key) :: (clauses ++ fallback))
+
+extension (e: Expr)
+  def pretty: String =
+    val text = renderScheme(e, "#:")
+    if !text.contains("#:") then text
+    else
+      // Choose one legal prefix absent from the whole tree, including macro templates.
+      val prefix = Iterator.iterate("$tmp-")("$" + _).find(p => !text.contains(p)).get
+      renderScheme(e, prefix)
 
   def prettyPrint: Unit = println(e.pretty)
 
