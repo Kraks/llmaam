@@ -9,6 +9,8 @@ case class SSym(x: String) extends Expr with AtomExpr
 case class Var(x: String) extends Expr with AtomExpr
 case class App(e1: Expr, param: List[Expr]) extends Expr with AtomExpr
 case class Lam(param: List[String], body: Expr) extends Expr with AtomExpr
+case class RestLam(params: List[String], rest: String, body: Expr) extends Expr
+case class SyntaxForm(datum: Datum) extends Expr
 case class Bind(x: String, e: Expr) {
   def toSet = SetVar(x, e)
 }
@@ -33,16 +35,14 @@ case class BoolLit(x: Boolean) extends Expr with AtomExpr
 case class CharLit(x: Char) extends Expr with AtomExpr
 case class If(cnd: Expr, thn: Expr, els: Expr) extends Expr with AtomExpr
 
-trait CondBrTrait {
-  val cnd: Expr
-  val thn: Expr
-}
+sealed trait CondBrTrait
+case class CondTest(cnd: Expr) extends CondBrTrait
 case class CondBr(cnd: Expr, thn: Expr) extends CondBrTrait
 case class CondProcBr(cnd: Expr, thn: Expr) extends CondBrTrait
 case class Cond(branches: List[CondBrTrait]) extends Expr
 
 case class CaseBranch(cases: List[Expr], thn: Expr)
-case class Case(e: Expr, branches: List[CaseBranch]) extends Expr
+case class Case(e: Expr, branches: List[CaseBranch], otherwise: Expr = Void()) extends Expr
 
 case class Void() extends Expr with AtomExpr
 case class SetVar(x: String, e: Expr) extends Expr with AtomExpr
@@ -51,6 +51,10 @@ case class Define(x: String, e: Expr) extends Expr
 
 extension (e: Expr)
   def pretty: String = e match
+    case SyntaxForm(datum) => datum.pretty
+    case RestLam(params, rest, body) =>
+      val formals = if params.isEmpty then rest else (params :+ "." :+ rest).mkString("(", " ", ")")
+      s"(lambda $formals ${body.pretty})"
     case Var(x) => x
     case Void() => "(void)"
     case SSym(x) => "'" + x
@@ -80,6 +84,8 @@ extension (e: Expr)
     case App(x, l)    => 1 + x.size + l.foldLeft(0)(_ + _.size)
     case Begin(es)    => 1 + es.foldLeft(0)(_ + _.size)
     case If(c, t, e)  => 1 + c.size + t.size + e.size
+    case RestLam(_, _, body) => 1 + body.size
+    case SyntaxForm(_) => 1
     case Lam(params, body) => 1 + body.size
   }
 
@@ -89,6 +95,7 @@ extension (e: Expr)
     case App(x, l)    => x.defVars ++ l.map(_.defVars).foldLeft(Set[String]())(_ ++ _)
     case Begin(es)    => es.map(_.defVars).foldLeft(Set[String]())(_ ++ _)
     case If(c, t, e)  => c.defVars ++ t.defVars ++ e.defVars
+    case RestLam(_, _, body) => body.defVars
     case Lam(params, body) => body.defVars
     case _ => Set()
   }
@@ -107,6 +114,8 @@ extension (e: Expr)
       case App(x, l)    => x.free ++ l.map(_.free).foldLeft(Set[String]())(_ ++ _)
       case Begin(es)    => es.map(_.free).foldLeft(Set[String]())(_ ++ _)
       case If(c, t, e)  => c.free ++ t.free ++ e.free
+      case RestLam(params, rest, body) => body.free -- params - rest
+      case SyntaxForm(_) => throw new UnsupportedOperationException("free variables require macro expansion")
       case Lam(params, body) => body.free -- params.toSet
     }
     fv -- e.defVars
@@ -148,6 +157,10 @@ object AlphaRenamer {
         }
         (Begin(res), map)
       case If(c, t, e)  => (If(alpha(c, map)._1, alpha(t, map)._1, alpha(e, map)._1), map)
+      case SyntaxForm(_) => throw new UnsupportedOperationException("alpha renaming requires macro expansion")
+      case RestLam(params, rest, body) =>
+        val renamed = (params :+ rest).map(x => x -> fresh())
+        (RestLam(renamed.init.map(_._2), renamed.last._2, alpha(body, map ++ renamed)._1), map)
       case Lam(params, body) =>
         val nparams = params.map(x => (x, fresh("var")))
         val nmap = map ++ nparams.toMap

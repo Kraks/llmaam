@@ -19,3 +19,13 @@ lazy val root = project
     libraryDependencies += "org.scala-lang" %% "scala3-compiler" % scalaVersion.value,
     libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "2.4.0"
   )
+
+val commonJavaOptions = Seq(
+  "-Xms4G",
+  "-Xmx32G",
+  "-Xss1024M",
+  "-XX:MaxMetaspaceSize=8G",
+  "-XX:ReservedCodeCacheSize=2048M"
+)
+run / javaOptions ++= commonJavaOptions
+Test / javaOptions ++= commonJavaOptions

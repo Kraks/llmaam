@@ -1,78 +1,30 @@
 package llmaam.frontend.scm
 
-// Adapted from code by Yuxuan Chen
-
 extension (e: Expr)
   def desugar: Expr = new SchemeASTDesugar().apply(e)
 
-class SchemeASTDesugar() {
-  var lastIdent = 0
+class SchemeASTDesugar:
+  // Generated identifiers contain a reader-reserved prefix and cannot capture source names.
+  private def bindOnce(name: String, value: Expr)(body: Var => Expr): Expr =
+    Let(List(Bind(name, apply(value))), body(Var(name))).toApp
 
   def apply(expr: Expr): Expr = expr match
-    case App(e1, param) => App(apply(e1), param map apply)
-    case Lam(param, body) => Lam(param, apply(body))
-    case If(cnd, thn, els) => If(apply(cnd), apply(thn), apply(els))
-    case Cond(branches) => desugarCondBranches(branches)
-    case Case(e, branches) =>
-      newIdentLet(apply(e)) { v => desugarCaseBranches(v, branches) }
-    case SetVar(x, e) => SetVar(x, apply(e))
-    case Begin(es) => Begin(es.map(apply))
-    case Define(x, s) => Define(x, apply(s))
-    case _ => expr
-
-  private def newIdentLet(e: Expr)(f: Expr => Expr): App = {
-    val prefix = "$"
-    val id = lastIdent
-    lastIdent += 1
-    val newIdent: String = prefix + id
-    App(Lam(List(newIdent), f(Var(newIdent))), List(e))
-  }
-
-  private def desugarCondBranches(branches: List[CondBrTrait]): Expr =
-    branches match
-      case Nil => Void()
-      case x :: xs =>
-        x match
-          case CondBr(cnd, thn) =>
-            If(apply(cnd), apply(thn), desugarCondBranches(xs))
-          case CondProcBr(cnd, thnl) =>
-            newIdentLet(apply(cnd)) {
-              τ => If(τ, App(apply(thnl), List(τ)), desugarCondBranches(xs))
-            }
-
-  private def desugarCaseBranches(comp: Expr, branches: List[CaseBranch]): Expr =
-    branches match
-      case Nil => Void()
-      case x :: xs =>
-        val CaseBranch(cases, thn) = x
-        val xsCases = desugarCaseBranches(comp, xs)
-        cases.foldRight(xsCases) {
-          case (e, xsCases) => If(App(Var("eq?"), List(comp, e)), thn, xsCases)
-        }
-
-  private def foldDefine(seq: List[Expr]): (List[String], List[Expr]) =
-    seq match
-      case Nil => (List(), List())
-      case x :: xs =>
-        val (ls, le) = foldDefine(xs)
-        x match
-          case Define(n, v) => (n :: ls, SetVar(n, v) :: le)
-          case _ => (ls, x :: le)
-
-  private def desugarSequence(seq: List[Expr]): Expr = {
-    val (ls, le) = foldDefine(seq)
-    val body = le match
-      case Nil => Void()
-      case x :: Nil => apply(x)
-      case x :: xs =>
-        x match
-          case Define(n, v) =>
-            App(Lam(List(n), newIdentLet(SetVar(n, apply(v))) { _ => desugarSequence(xs) }), List(Void()))
-          case _ =>
-            newIdentLet(apply(x)) { _ => desugarSequence(xs) }
-    ls.foldLeft(body) {
-      case (b, name) =>
-        App(Lam(List(name), b), List(Void()))
+    case App(f, args) => App(apply(f), args.map(apply))
+    case Lam(params, body) => Lam(params, apply(body))
+    case RestLam(params, rest, body) => RestLam(params, rest, apply(body))
+    case If(c, t, e) => If(apply(c), apply(t), apply(e))
+    case Cond(branches) => branches.foldRight[Expr](Void()) {
+      case (CondBr(c, t), rest) => If(apply(c), apply(t), rest)
+      case (CondTest(c), rest) => bindOnce("#:cond", c)(v => If(v, v, rest))
+      case (CondProcBr(c, proc), rest) => bindOnce("#:cond", c)(v => If(v, App(apply(proc), List(v)), rest))
     }
-  }
-}
+    case Case(key, branches, otherwise) => bindOnce("#:case", key) { v =>
+      branches.foldRight(apply(otherwise)) { (branch, rest) =>
+        val thn = apply(branch.thn)
+        branch.cases.foldRight(rest)((k, xs) => If(App(Var("eqv?"), List(v, apply(k))), thn, xs))
+      }
+    }
+    case SetVar(x, rhs) => SetVar(x, apply(rhs))
+    case Begin(es) => Begin(es.map(apply))
+    case Define(x, rhs) => Define(x, apply(rhs))
+    case _ => expr

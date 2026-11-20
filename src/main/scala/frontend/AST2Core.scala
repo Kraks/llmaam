@@ -44,6 +44,8 @@ object AST2Core:
     case Nil => C.Begin(Nil)
 
   def translate(e: S.Expr): C = e match
+    case S.RestLam(_, _, _) => unsupported("rest parameters", e.pretty)
+    case S.SyntaxForm(d) => unsupported("unexpanded syntax", d.pretty)
     case S.IntLit(n)  => C.Lit(n)
     case S.BoolLit(b) => C.Lit(b)
     case S.CharLit(c)  => C.Lit(c)

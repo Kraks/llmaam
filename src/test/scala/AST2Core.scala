@@ -25,73 +25,76 @@ class Playground extends FunSuite{
 }
 
 class TestAST2Core extends FunSuite {
-  def testTranslation(input: String, expected: String): Unit = {
-    val e = SchemeParser(input)
-      .getOrElse(fail(s"SchemeParser returned None for input: $input"))
-    val c = AST2Core(e).toString()
-    println(s"Translating: $input to $c")
-    assertEquals(c, expected, s"Expected: $expected, but got: $c")
-  }
+  import C.*
+
+  private def testTranslation(input: String, expected: C): Unit =
+    val parsed = SchemeParser(input).getOrElse(fail(s"Could not parse $input"))
+    assertEquals(AST2Core(parsed), expected, input)
+
+  private def prim(op: String, args: C*): C = PrimOp(op, args.toList)
+
+  private val sumXYZ = Lam("x", Lam("y", Lam("z", prim("+", prim("+", Var("x"), Var("y")), Var("z")))))
+  private val addAB = App(App(Var("add"), Var("a")), Var("b"))
 
   test("translate Lits"):
-    testTranslation("1", "1")
-    testTranslation("3.14", "3.14")
-    testTranslation("#\\a", "#\\a")
-    testTranslation("#t", "true")
-    testTranslation("#T", "true")
-    testTranslation("#f", "false")
-    testTranslation("#F", "false")
-    testTranslation("(void)", "(void)")
-    testTranslation("3.14+2.7i", "((vector 3.14) 2.7)")
+    testTranslation("1", Lit(1))
+    testTranslation("3.14", Lit(3.14))
+    testTranslation("#\\a", Lit('a'))
+    testTranslation("#t", Lit(true))
+    testTranslation("#T", Lit(true))
+    testTranslation("#f", Lit(false))
+    testTranslation("#F", Lit(false))
+    testTranslation("(void)", Void())
+    testTranslation("3.14+2.7i", App(App(Var("vector"), Lit(3.14)), Lit(2.7)))
 
   test("translate Lam"):
-    testTranslation("(lambda (z) (- z))", "(λz. (- z))")
-    testTranslation(
-        "(lambda (x y z) (+ (+ x y) z))",
-        "(λx. (λy. (λz. ((x + y) + z))))"
-    )
+    testTranslation("(lambda (z) (- z))", Lam("z", prim("-", Var("z"))))
+    testTranslation("(lambda (x y z) (+ (+ x y) z))", sumXYZ)
 
   test("translate App"):
-    testTranslation("(+ 1 2)", "(1 + 2)")
+    testTranslation("(+ 1 2)", prim("+", Lit(1), Lit(2)))
     testTranslation(
-        "((lambda (x y z) (+ (+ x y) z)) 1 2 3)",
-        "((((λx. (λy. (λz. ((x + y) + z)))) 1) 2) 3)"
+      "((lambda (x y z) (+ (+ x y) z)) 1 2 3)",
+      App(App(App(sumXYZ, Lit(1)), Lit(2)), Lit(3))
     )
 
   test("letrec_to_set"):
+    val body = Begin(List(SetVar("a", Lit(3)), SetVar("b", Var("a")), addAB))
     testTranslation(
       "(letrec ([a 3] [b a]) (add a b))",
-      "(((λa. (λb. (begin (set! a = 3), (set! b = a), ((add a) b)))) (void)) (void))"
+      App(App(Lam("a", Lam("b", body)), Void()), Void())
     )
 
   test("implicit"):
-    testTranslation(
-      "(add a b) (add a b)",
-      "(begin ((add a) b), ((add a) b))"
-    )
+    testTranslation("(add a b) (add a b)", Begin(List(addAB, addAB)))
 
   test("arith"):
     testTranslation(
-        "(+ (- a b) (* (/ 2 3) 4))",
-        "((a - b) + ((2 / 3) * 4))"
+      "(+ (- a b) (* (/ 2 3) 4))",
+      prim("+", prim("-", Var("a"), Var("b")), prim("*", prim("/", Lit(2), Lit(3)), Lit(4)))
     )
 
   test("define_proc"):
     testTranslation(
       "(define (f a b) (+ a b))",
-      "(letrec f = (λa. (λb. (a + b))) in (void))"
+      Letrec("f", Lam("a", Lam("b", prim("+", Var("a"), Var("b")))), Void())
     )
 
   test("cond"):
+    val last = If(App(Var("positive?"), Lit(5)), prim("quote", Lit("here")), Void())
+    val second = If(App(Var("zero?"), Lit(-5)), App(Var("error"), Lit(2)), last)
     testTranslation(
       """(cond
           [(positive? -5) (error 1)]
           [(zero? -5) (error 2)]
           [(positive? 5) 'here])""",
-      """(if (positive? -5) then (error 1) else (if (zero? -5) then (error 2) else (if (positive? 5) then (quote "here") else (void))))"""
+      If(App(Var("positive?"), Lit(-5)), App(Var("error"), Lit(1)), second)
     )
 
   test("begin_define"):
+    val x = Var("x")
+    val bindY = Letrec("y", prim("+", x, Lit(1)), Begin(List(prim("+", x, Var("y")))))
+    val bindX = Letrec("x", Lit(5), Begin(List(App(Var("display"), x), bindY)))
     testTranslation(
       """(begin
          (display 1)
@@ -99,6 +102,6 @@ class TestAST2Core extends FunSuite {
          (display x)
          (define y (+ x 1))
          (+ x y))""",
-      "(begin (display 1), (letrec x = 5 in (begin (display x), (letrec y = (x + 1) in (begin (x + y))))))"
+      Begin(List(App(Var("display"), Lit(1)), bindX))
     )
 }
