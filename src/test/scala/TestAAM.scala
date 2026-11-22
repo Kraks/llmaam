@@ -27,7 +27,7 @@ class Playground extends FunSuite {
   //testAnalyzer(new Analyzer with LLMAlloc with OpenAI, benchmarks.stack2, "stack2_openai")
 
   // FIXME: there is a VState not handled, seems because a spurious flow causing a condition to be lambda
-  val church = SchemeParser.parseFile("benchmarks/oaam/church.sch").get.toCore
+  //val church = SchemeParser.parseFile("benchmarks/oaam/church.sch").get.toCore
   //testAnalyzer(new Analyzer with KCFA(0) with P4FContAlloc, church, "church_0cfa_p4f", false)
 
   /*
@@ -37,6 +37,8 @@ class Playground extends FunSuite {
   testAnalyzer(new Analyzer with KCFA(0) with SrcContAlloc, kcfa5, "kcfa5_0cfa_src", false)
   testAnalyzer(new Analyzer with KCFA(0) with TgtContAlloc, kcfa5, "kcfa5_0cfa_tgt", false)
   */
+  val prog = SchemeParser.parseFile("benchmarks/kcfa/kcfa-worst-case-2.scm").get.toCore
+  testAnalyzer(new Analyzer with LLMAlloc with OpenAI, prog, s"kcfa2_test", false)
 }
 
 def benchmark(file: String, name: String): Unit = {

@@ -181,7 +181,7 @@ trait OpenAI extends LLM:
   val openaiAPI = Source.fromFile("OPENAI_API_KEY").getLines().next()
   val openai = OpenAiChatModel.builder()
     .apiKey(openaiAPI)
-    .modelName(OpenAiChatModelName.GPT_4_O_MINI)
+    .modelName("gpt-6-luna")
     .responseFormat("json_object")
     //.logRequests(true)
     //.logResponses(true)
