@@ -68,20 +68,26 @@ trait LLM:
   |
   |The "Expr" of "State" field is the current program/expression being evaluated, which is defined by the following algebraic data type:
   |enum Expr:
-  |  case Lit(n: Int)
-  |  case UnaryOp(op: String, arg: Expr)
-  |  case BinOp(op: String, lhs: Expr, rhs: Expr)
+  |  case Lit(n: Int | Boolean | Double | Char | String)
+  |  case Void()
+  |  case PrimOp(op: String, operands: List[Expr])
   |  case Var(x: String)
   |  case Lam(x: String, body: Expr)
   |  case App(f: Expr, arg: Expr)
   |  case Let(x: String, rhs: Expr, body: Expr)
   |  case Letrec(x: String, rhs: Expr, body: Expr)
   |  case Begin(exprs: List[Expr])
-  |The input program is already renamed so that variable names are unique.
+  |  case If(cond: Expr, thn: Expr, els: Expr)
+  |  case While(cond: Expr, body: Expr)
+  |  case SetVar(x: String, rhs: Expr)
+  |  case Define(x: String, rhs: Expr)
+  |The input program is not renamed, so different binders may use the same variable name.
   |
   |The "Value" of "State" field is the value being evaluated, which is defined by the following algebraic data type:
   |enum Value:
   |  case Num()
+  |  case Bool()
+  |  case UnitVal()
   |  case Clo(lam: Expr.Lam, ρ: Env)
   |
   |The "Env" field is the environment mapping variable names to their abstract addresses BAddr.
@@ -90,23 +96,29 @@ trait LLM:
   |
   |The "BStore" field is the store mapping abstract binding addresses to sets of abstract values, each map is represented with ->.
   |type BStore = Map[BAddr, Set[Value]]
-  |Elements in the set can be either "ℤ" for abstract integers Num() or a closure represented as "⟨lambda_expression, environment⟩".
+  |Elements in the set can be "ℤ" for abstract numbers Num(), "𝔹" for abstract booleans Bool(), "()" for the unit value UnitVal(),
+  |or a closure represented as "⟨lambda_expression, environment⟩".
   |
-  |The "KStore" field is the store mapping abstract binding addresses to sets of continuations, each map is represented with ->.
+  |The "KStore" field is the store mapping abstract continuation addresses to sets of continuations, each map is represented with ->.
   |type KStore = Map[KAddr, Set[Kont]]
-  |case class KAddr(e: Expr, instrumentation: List[Any])
+  |case class KAddr(instrumentation: List[Any])
+  |The instrumentation of a KAddr lists, in this order, the source expression, target expression, target environment,
+  |target binding store, and time; each component is Some(...) if it is used and None otherwise.
   |
   |The "Kont"/"continuation" field is the current continuation, which is defined by the following algebraic data type:
-  |  enum Kont:
+  |enum Kont:
   |  case KHalt()
-  |  case KUnaryOp(op: String, ρ: Env, k: KAddr)
-  |  case KBinOpR(op: String, rhs: Expr, ρ: Env, k: KAddr)
-  |  case KBinOpL(op: String, lhs: Value, k: KAddr)
+  |  case KPrimOp(op: String, vals: List[Value], rands: List[Expr], ρ: Env, k: KAddr)
   |  case KArg(e: Expr, ρ: Env, k: KAddr)
   |  case KFun(lam: Expr.Lam, ρ: Env, k: KAddr)
   |  case KLet(x: String, ρ: Env, body: Expr, k: KAddr)
   |  case KLetrec(x: String, xa: BAddr, ρ: Env, body: Expr, k: KAddr)
-  |  case KBegin(exprs: List[Expr], k: KAddr)
+  |  case KBegin(exprs: List[Expr], ρ: Env, k: KAddr)
+  |  case KIf(thn: Expr, els: Expr, ρ: Env, k: KAddr)
+  |  case KWhileCnd(cond: Expr, body: Expr, ρ: Env, k: KAddr)
+  |  case KWhileBdy(cond: Expr, body: Expr, ρ: Env, k: KAddr)
+  |  case KSet(x: String, rhs: Expr, ρ: Env, k: KAddr)
+  |  case KDefine(x: String, rhs: Expr, ρ: Env, k: KAddr)
   |
   |The "Time" field is a list of program call sites expression that represent the history of
   |calls leading to the current state (context sensitivity).
@@ -144,6 +156,7 @@ trait LLM:
   |Field "reason" should explain why you chose this address for better ${goal} by analyzing the current state.
   |The reason you give should be specific to the current state and should not be generic.
   |Field "query-type" should be either "BAddr", "KAddr", or "Tick" according to the "query-type" field in the input query.
+  |Always include every output field listed below for the given "query-type".
   |
   |Only if "query-type" is "BAddr":
   |Field "time" should be true if the binding address should be instrumented with the time (call history).
@@ -155,6 +168,7 @@ trait LLM:
   |Field "target-expression" should be true if the continuation address should be instrumented with the target expression, otherwise false.
   |Field "target-environment" should be true if the continuation address should be instrumented with the target environment, otherwise false.
   |Field "target-binding-store" should be true if the continuation address should be instrumented with the target binding store, otherwise false.
+  |Field "time" should be true if the continuation address should be instrumented with the time (call history), otherwise false.
   |
   |Only if "query-type" is "Tick":
   |Field "k" should be the number (represented as a quoted string) of context-sensitivity levels to use in the analysis.

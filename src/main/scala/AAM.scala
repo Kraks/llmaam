@@ -80,6 +80,11 @@ def evalPrimOp(op: String, vs: List[Value]): Option[Value] =
     case "or" if vs.forall(_.isInstanceOf[Bool]) => Some(Bool())
     case "=" if vs.size == 2 => Some(Bool())
     case "list" | "quote" => Some(UnitVal())
+    // Scheme arithmetic is variadic: (- x), (+ a b c), ...
+    case o if arithBin(o) && vs.nonEmpty && vs.forall(_ == Num()) => Some(Num())
+    case o if relBin(o) && vs.size >= 2 && vs.forall(_ == Num()) => Some(Bool())
+    case o if logicUn(o) && vs == List(Bool()) => Some(Bool())
+    case o if logicBin(o) && vs.forall(_ == Bool()) => Some(Bool())
     case _ => None
 
 // Addresses
