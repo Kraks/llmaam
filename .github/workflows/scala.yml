@@ -32,3 +32,4 @@ jobs:
         sbt 'testOnly llmaam.aam.TestAAM'
         sbt 'testOnly llmaam.frontend.scm.TestParser'
         sbt 'testOnly llmaam.frontend.scm.TestAST2Core'
+        sbt 'testOnly llmaam.frontend.scm.TestANFBenchmarks'
