@@ -62,7 +62,7 @@ object AST2Core:
     // XXX (GW): the parser already desugars `let` and `letrec` into `app`, which is a bit
     // handwavy, should consider refactor there and here.
     case S.Let(bds, body) => foldLets(bds, body, rec = false)
-    case S.Lrc(bds, body) => foldLets(bds, body, rec = true)
+    case S.Letrec(bds, body) => foldLets(bds, body, rec = true)
     // XXX (ZZ): we made a small trick to translate `define`, since we do not have
     // `define` in our core syntax.
     // XXX (GW): I think we might still need `define` in the core syntax.

@@ -3,6 +3,7 @@ package llmaam.frontend.scm
 import scala.io.Source
 import scala.util.Using
 import scala.util.control.NoStackTrace
+import llmaam.frontend.counter.fresh
 
 object SchemeParser extends SchemeTokenParser:
   import Datum.*
@@ -61,7 +62,7 @@ object SchemeParser extends SchemeTokenParser:
   // Apply the recursive procedure outside its binding so initializers see the outer scope.
   private def namedLet(loop: String, bs: List[Bind], result: Expr): App =
     val proc = Bind(loop, Lam(bs.map(_.x), result))
-    App(Lrc(List(proc), Var(loop)).toApp, bs.map(_.e))
+    App(Letrec(List(proc), Var(loop)), bs.map(_.e))
 
   private def iteration(vars: Datum, exit: Datum, commands: List[Datum]): Expr =
     val steps = elements(vars).map {
@@ -72,7 +73,7 @@ object SchemeParser extends SchemeTokenParser:
     }
     elements(exit) match
       case test :: results =>
-        val loop = "#:do"
+        val loop = fresh("#:do")
         val next = App(Var(loop), steps.map(_._2))
         val done = if results.isEmpty then Void() else body(results)
         val repeat = sequence(commands.map(expression) :+ next)
@@ -142,10 +143,10 @@ object SchemeParser extends SchemeTokenParser:
       case Atom("if") :: c :: t :: alt if alt.size <= 1 =>
         If(expression(c), expression(t), alt.headOption.fold[Expr](Void())(expression))
       case Atom("let" | "recur") :: (loop @ Atom(_)) :: bs :: ds => namedLet(name(loop), bindings(bs), body(ds))
-      case List(Atom("rec"), loop, rhs) => Lrc(List(Bind(name(loop), expression(rhs))), Var(name(loop))).toApp
-      case Atom("let") :: bs :: ds => Let(bindings(bs), body(ds)).toApp
-      case Atom("letrec") :: bs :: ds => Lrc(bindings(bs), body(ds)).toApp
-      case Atom("let*") :: bs :: ds => bindings(bs).foldRight(body(ds))((b, e) => Let(List(b), e).toApp)
+      case List(Atom("rec"), loop, rhs) => Letrec(List(Bind(name(loop), expression(rhs))), Var(name(loop)))
+      case Atom("let") :: bs :: ds => Let(bindings(bs), body(ds))
+      case Atom("letrec") :: bs :: ds => Letrec(bindings(bs), body(ds))
+      case Atom("let*") :: bs :: ds => bindings(bs).foldRight(body(ds))((b, e) => Let(List(b), e))
       case Atom("do") :: vars :: exit :: ds => iteration(vars, exit, ds)
       case Atom(op @ ("when" | "unless")) :: c :: ds =>
         if op == "when" then If(expression(c), body(ds), Void()) else If(expression(c), Void(), body(ds))
@@ -160,7 +161,8 @@ object SchemeParser extends SchemeTokenParser:
       case Atom("and") :: ds =>
         ds.map(expression).reduceRightOption((x, y) => If(x, y, BoolLit(false))).getOrElse(BoolLit(true))
       case Atom("or") :: ds => ds.map(expression).reduceRightOption { (x, y) =>
-        Let(List(Bind("#:or", x)), If(Var("#:or"), Var("#:or"), y)).toApp
+        val name = fresh("#:or")
+        Let(List(Bind(name, x)), If(Var(name), Var(name), y))
       }.getOrElse(BoolLit(false))
       case Atom(op) :: _ if syntaxForms(op) => SyntaxForm(d)
       case Atom(op) :: _ if special(op) => invalid(s"a valid $op form", d)

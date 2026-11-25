@@ -14,20 +14,8 @@ case class SyntaxForm(datum: Datum) extends Expr
 case class Bind(x: String, e: Expr) {
   def toSet = SetVar(x, e)
 }
-
-case class Let(bds: List[Bind], body: Expr) extends Expr {
-  def toApp: App = {
-    val args = bds map { case Bind(name, _) => name }
-    val vals = bds map { case Bind(_, value) => value }
-    App(Lam(args, body), vals)
-  }
-}
-
-case class Lrc(bds: List[Bind], body: Expr) extends Expr {
-  def toApp: App =
-    Let(bds.map { case Bind(x, _) => Bind(x, Void()) },
-      Begin(bds.map(_.toSet) ++ List(body))).toApp
-}
+case class Let(bds: List[Bind], body: Expr) extends Expr
+case class Letrec(bds: List[Bind], body: Expr) extends Expr
 
 case class IntLit(x: Int) extends Expr with AtomExpr
 case class FloatLit(x: Double) extends Expr with AtomExpr
@@ -86,7 +74,7 @@ private def renderScheme(e: Expr, generatedPrefix: String): String =
       val formals = if params.isEmpty then name(rest) else parens(params.map(name) ++ List(".", name(rest)))
       s"(lambda $formals ${render(body)})"
     case Let(bs, body) => s"(let ${bindings(bs)} ${render(body)})"
-    case Lrc(bs, body) => s"(letrec ${bindings(bs)} ${render(body)})"
+    case Letrec(bs, body) => s"(letrec ${bindings(bs)} ${render(body)})"
     case Cond(bs) =>
       val last = bs.length - 1
       val clauses = bs.zipWithIndex.map {

@@ -58,11 +58,10 @@ class TestAST2Core extends FunSuite {
       App(App(App(sumXYZ, Lit(1)), Lit(2)), Lit(3))
     )
 
-  test("letrec_to_set"):
-    val body = Begin(List(SetVar("a", Lit(3)), SetVar("b", Var("a")), addAB))
+  test("translate explicit letrec"):
     testTranslation(
       "(letrec ([a 3] [b a]) (add a b))",
-      App(App(Lam("a", Lam("b", body)), Void()), Void())
+      Letrec("a", Lit(3), Letrec("b", Var("a"), addAB))
     )
 
   test("implicit"):

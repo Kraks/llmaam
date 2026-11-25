@@ -4,6 +4,7 @@ import munit.FunSuite
 import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters.*
 import scala.util.Using
+import llmaam.frontend.counter.reset
 
 class TestParser extends FunSuite {
   test("pretty-printer"):
@@ -32,33 +33,37 @@ class TestParser extends FunSuite {
     val bs = List(Bind("x", CharLit(' ')), Bind("y", CharLit('\n')))
     val body = App(Var("f"), List(Var("x"), Var("y")))
     assertEquals(Let(bs, body).pretty, "(let ((x #\\space) (y #\\newline)) (f x y))")
-    assertEquals(Lrc(bs, body).pretty, "(letrec ((x #\\space) (y #\\newline)) (f x y))")
+    assertEquals(Letrec(bs, body).pretty, "(letrec ((x #\\space) (y #\\newline)) (f x y))")
 
   test("printing generated identifiers preserves user bindings"):
+    reset
     val source = "(lambda ($tmp-or) (or x $tmp-or))"
-    val expected = "(lambda ($tmp-or) ((lambda ($$tmp-or) (if $$tmp-or $$tmp-or $tmp-or)) x))"
+    val expected = "(lambda ($tmp-or) (let (($$tmp-or0 x)) (if $$tmp-or0 $$tmp-or0 $tmp-or)))"
     assertEquals(SchemeParser(source).get.pretty, expected)
     assertEquals(SchemeParser(expected).get.pretty, expected)
+
+  test("or generates distinct names and consistently references each binding"):
+    reset
+    val source = "(or (or a b) c d)"
+    val inner = Let(List(Bind("#:or0", Var("a"))), If(Var("#:or0"), Var("#:or0"), Var("b")))
+    val rest = Let(List(Bind("#:or1", Var("c"))), If(Var("#:or1"), Var("#:or1"), Var("d")))
+    val expected = Let(List(Bind("#:or2", inner)), If(Var("#:or2"), Var("#:or2"), rest))
+    assertEquals(SchemeParser(source), Some(expected))
+    assertNotEquals(SchemeParser(source), Some(expected))
 
   test("quasiquote"):
     assert(SchemeParser("'xxxx") == Some(SSym("xxxx")))
     assert(SchemeParser("`(a 1 ,(a b))") == Some(App(Var("list"),List(SSym("a"), IntLit(1), App(Var("a"),List(Var("b")))))))
 
-  test("letrec_to_set"):
-    val actual = SchemeParser("(letrec ([a 3] [b a]) (add a b))")
-    val expected = Some(
-      App(
-        Lam(List("a", "b"),
-          Begin(
-            List(
-              SetVar("a",IntLit(3)),
-              SetVar("b",Var("a")),
-              App(Var("add"),List(Var("a"), Var("b")))
-            )
-          )
-        ),
-      List(Void(), Void())))
-    assert(actual == expected)
+  test("let and letrec preserve binding nodes"):
+    val bs = List(Bind("a", IntLit(3)), Bind("b", Var("a")))
+    val body = App(Var("add"), List(Var("a"), Var("b")))
+    assertEquals(SchemeParser("(let ([a 3] [b a]) (add a b))"), Some(Let(bs, body)))
+    assertEquals(SchemeParser("(letrec ([a 3] [b a]) (add a b))"), Some(Letrec(bs, body)))
+    assertEquals(SchemeParser("(let* ([a 3] [b a]) (add a b))"),
+      Some(Let(List(bs.head), Let(List(bs(1)), body))))
+    assertEquals(SchemeParser("(rec f (lambda () f))"),
+      Some(Letrec(List(Bind("f", Lam(Nil, Var("f")))), Var("f"))))
 
   test("implicit"):
     val actual = SchemeParser("(add a b) (add a b)")
@@ -144,21 +149,28 @@ class TestParser extends FunSuite {
 
   test("empty bindings and named let initializers"):
     assertEquals(SchemeParser("(let* () 1 2)"), Some(Begin(List(IntLit(1), IntLit(2)))))
-    val proc = Lrc(List(Bind("f", Lam(List("x"), Var("x")))), Var("f")).toApp
+    assertEquals(SchemeParser("(let () 1)"), Some(Let(Nil, IntLit(1))))
+    assertEquals(SchemeParser("(letrec () 1)"), Some(Letrec(Nil, IntLit(1))))
+    val proc = Letrec(List(Bind("f", Lam(List("x"), Var("x")))), Var("f"))
     assertEquals(SchemeParser("(let f ((x f)) x)"), Some(App(proc, List(Var("f")))))
 
   test("do uses old bindings in every step and retains an omitted step"):
-    val call = App(Var("#:do"), List(Var("y"), Var("y")))
+    reset
+    val source = "(do ((x 0 y) (y 1)) (done x) work)"
+    val call = App(Var("#:do0"), List(Var("y"), Var("y")))
     val loop = Lam(List("x", "y"), If(Var("done"), Var("x"), Begin(List(Var("work"), call))))
-    val proc = Lrc(List(Bind("#:do", loop)), Var("#:do")).toApp
-    assertEquals(SchemeParser("(do ((x 0 y) (y 1)) (done x) work)"), Some(App(proc, List(IntLit(0), IntLit(1)))))
+    val proc = Letrec(List(Bind("#:do0", loop)), Var("#:do0"))
+    val expected = App(proc, List(IntLit(0), IntLit(1)))
+    assertEquals(SchemeParser(source), Some(expected))
+    assertNotEquals(SchemeParser(source), Some(expected))
 
   test("conditional forms preserve values and evaluate tests once"):
+    reset
     def lowered(s: String) = SchemeParser(s).map(_.desugar.pretty)
     assertEquals(lowered("(and)"), Some("#t"))
     assertEquals(lowered("(or)"), Some("#f"))
     assertEquals(lowered("(and x y)"), Some("(if x y #f)"))
-    assertEquals(lowered("(or (f) $0)"), Some("((lambda ($tmp-or) (if $tmp-or $tmp-or $0)) (f))"))
+    assertEquals(lowered("(or (f) $0)"), Some("(let (($tmp-or0 (f))) (if $tmp-or0 $tmp-or0 $0))"))
     assertEquals(lowered("(if x y)"), Some("(if x y (void))"))
     assertEquals(lowered("(cond ((f) => g) (x))"),
       Some("((lambda ($tmp-cond) (if $tmp-cond (g $tmp-cond) ((lambda ($tmp-cond) (if $tmp-cond $tmp-cond (void))) x))) (f))"))

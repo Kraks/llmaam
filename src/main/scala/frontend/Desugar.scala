@@ -6,7 +6,7 @@ extension (e: Expr)
 class SchemeASTDesugar:
   // Generated identifiers contain a reader-reserved prefix and cannot capture source names.
   private def bindOnce(name: String, value: Expr)(body: Var => Expr): Expr =
-    Let(List(Bind(name, apply(value))), body(Var(name))).toApp
+    App(Lam(List(name), body(Var(name))), List(apply(value)))
 
   def apply(expr: Expr): Expr = expr match
     case App(f, args) => App(apply(f), args.map(apply))

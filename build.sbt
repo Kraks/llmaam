@@ -29,3 +29,6 @@ val commonJavaOptions = Seq(
 )
 run / javaOptions ++= commonJavaOptions
 Test / javaOptions ++= commonJavaOptions
+
+// Tests reset the shared frontend fresh-name counter.
+Test / parallelExecution := false
