@@ -27,6 +27,10 @@ val commonJavaOptions = Seq(
   "-XX:MaxMetaspaceSize=8G",
   "-XX:ReservedCodeCacheSize=2048M"
 )
+
+// Fork so the configured JVM options take effect.
+run / fork := true
+Test / fork := true
 run / javaOptions ++= commonJavaOptions
 Test / javaOptions ++= commonJavaOptions
 
