@@ -1,6 +1,6 @@
 package llmaam.frontend.scm
 
-// TODO: refactor/unify these Scheme AST to Syntax.scala in the parent folder
+// Scheme reader AST, normalized into ANF before analysis.
 
 trait Expr
 trait AtomExpr

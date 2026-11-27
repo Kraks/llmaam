@@ -1,6 +1,6 @@
 package llmaam.aam
 
-import llmaam.syntax.Expr
+import llmaam.frontend.anf.Expr
 
 import scala.io.Source
 import scala.collection.mutable.{ListBuffer, HashMap}
@@ -67,28 +67,37 @@ trait LLM:
   |  case ErrState()
   |
   |The "Expr" of "State" field is the current program/expression being evaluated, which is defined by the following algebraic data type:
-  |enum Expr:
-  |  case Lit(n: Int | Boolean | Double | Char | String)
-  |  case Void()
-  |  case PrimOp(op: String, operands: List[Expr])
+  |sealed trait Expr
+  |case class Let(x: String, rhs: CExpr, body: Expr) extends Expr
+  |enum AExpr extends Expr:
   |  case Var(x: String)
-  |  case Lam(x: String, body: Expr)
-  |  case App(f: Expr, arg: Expr)
-  |  case Let(x: String, rhs: Expr, body: Expr)
-  |  case Letrec(x: String, rhs: Expr, body: Expr)
-  |  case Begin(exprs: List[Expr])
-  |  case If(cond: Expr, thn: Expr, els: Expr)
-  |  case While(cond: Expr, body: Expr)
-  |  case SetVar(x: String, rhs: Expr)
-  |  case Define(x: String, rhs: Expr)
-  |The input program is not renamed, so different binders may use the same variable name.
+  |  case IntLit(x: Int)
+  |  case FloatLit(x: Double)
+  |  case BoolLit(x: Boolean)
+  |  case CharLit(x: Char)
+  |  case Sym(x: String)
+  |  case Void()
+  |  case Lam(params: List[String], body: Expr)
+  |  case RestLam(params: List[String], rest: String, body: Expr)
+  |enum CExpr:
+  |  case Value(value: AExpr)
+  |  case App(fun: AExpr, args: List[AExpr])
+  |  case If(cond: AExpr, thn: Expr, els: Expr)
+  |  case SetVar(x: String, value: AExpr)
+  |The program is in ANF and its binders have been renamed to fresh names.
+  |Applications retain all arguments; they are not curried. Atomic operands are evaluated directly.
+  |Primitive names resolve to primitive values unless shadowed by lexical bindings.
   |
   |The "Value" of "State" field is the value being evaluated, which is defined by the following algebraic data type:
   |enum Value:
   |  case Num()
   |  case Bool()
+  |  case CharVal()
+  |  case SymVal()
+  |  case ListVal()
   |  case UnitVal()
-  |  case Clo(lam: Expr.Lam, ρ: Env)
+  |  case Prim(op: String)
+  |  case Clo(lam: AExpr.Lam | AExpr.RestLam, ρ: Env)
   |
   |The "Env" field is the environment mapping variable names to their abstract addresses BAddr.
   |type Env = Map[String, BAddr]
@@ -97,7 +106,8 @@ trait LLM:
   |The "BStore" field is the store mapping abstract binding addresses to sets of abstract values, each map is represented with ->.
   |type BStore = Map[BAddr, Set[Value]]
   |Elements in the set can be "ℤ" for abstract numbers Num(), "𝔹" for abstract booleans Bool(), "()" for the unit value UnitVal(),
-  |or a closure represented as "⟨lambda_expression, environment⟩".
+  |CharVal(), SymVal(), ListVal(), a primitive value, or a closure represented as "⟨lambda_expression, environment⟩".
+  |ListVal abstracts all lists, including rest arguments, without retaining their elements.
   |
   |The "KStore" field is the store mapping abstract continuation addresses to sets of continuations, each map is represented with ->.
   |type KStore = Map[KAddr, Set[Kont]]
@@ -108,20 +118,13 @@ trait LLM:
   |The "Kont"/"continuation" field is the current continuation, which is defined by the following algebraic data type:
   |enum Kont:
   |  case KHalt()
-  |  case KPrimOp(op: String, vals: List[Value], rands: List[Expr], ρ: Env, k: KAddr)
-  |  case KArg(e: Expr, ρ: Env, k: KAddr)
-  |  case KFun(lam: Expr.Lam, ρ: Env, k: KAddr)
   |  case KLet(x: String, ρ: Env, body: Expr, k: KAddr)
-  |  case KLetrec(x: String, xa: BAddr, ρ: Env, body: Expr, k: KAddr)
-  |  case KBegin(exprs: List[Expr], ρ: Env, k: KAddr)
-  |  case KIf(thn: Expr, els: Expr, ρ: Env, k: KAddr)
-  |  case KWhileCnd(cond: Expr, body: Expr, ρ: Env, k: KAddr)
-  |  case KWhileBdy(cond: Expr, body: Expr, ρ: Env, k: KAddr)
-  |  case KSet(x: String, rhs: Expr, ρ: Env, k: KAddr)
-  |  case KDefine(x: String, rhs: Expr, ρ: Env, k: KAddr)
+  |KLet saves a pending binding while a function body or conditional branch is evaluated.
+  |The target expression/environment/store describe entry to that function body or branch.
   |
   |The "Time" field is a list of program call sites expression that represent the history of
   |calls leading to the current state (context sensitivity).
+  |Each call site is the enclosing Let whose rhs is CExpr.App.
   |type Time = List[Expr]
   |
   |Your input is a JSON object with the following schema:

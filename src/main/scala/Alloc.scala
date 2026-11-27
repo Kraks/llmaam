@@ -1,9 +1,8 @@
 package llmaam.aam
 
-import llmaam.syntax.*
-import Expr.*
+import llmaam.frontend.anf.{Expr, Let, CExpr}
 import Kont.*
-import Value.*
+import AbsVal.*
 import State.*
 
 /* Some baseline AAM allocation strategies.
@@ -19,8 +18,7 @@ import State.*
  *   baseline version described in Pushdown Control-Flow Analysis for Free, POPL16).
  * - `P4FContAlloc`: using the target expression and the target environment as the continuation address
  *   (as in Pushdown Control-Flow Analysis for Free, POPL16).
- *   Note: It doesn't work exactly the same as we use direct-style instead of ANF.
- * - `AACContAlloc`: the AAC continuation allocation strategy, it (should) works for direct-style programs
+ * - `AACContAlloc`: the AAC continuation allocation strategy
  *   (AAC variant described in Pushdown Control-Flow Analysis for Free, POPL 16).
  */
 
@@ -32,10 +30,10 @@ trait ZeroCFA:
 trait KCFA(k: Int):
   self: Analyzer =>
   def tick(s: State): Time = s match
-    case EState(e: App, _, _, _, _, t) => (e :: t).take(k)
+    case EState(e @ Let(_, _: CExpr.App, _), _, _, _, _, t) => (e :: t).take(k)
     case EState(_, _, _, _, _, t) => t // doesn't tick if not a call
     case VState(_, _, _, _, _, t) => t // value state doesn't tick
-    case ErrState() => ???
+    case ErrState() => Nil
   def allocBind(s: State, x: String, t: Time): BAddr = BAddr(x, t)
 
 trait SrcContAlloc:
@@ -47,7 +45,6 @@ trait SrcContAlloc:
 trait TgtContAlloc:
   self: Analyzer =>
   def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr =
-    val EState(e, _, _, _, _, _) = s
     KAddr(List(e1, t))
 
 trait SrcTgtContAlloc:
@@ -59,7 +56,6 @@ trait SrcTgtContAlloc:
 trait P4FContAlloc:
   self: Analyzer =>
   def allocKont(s: State, e1: Expr, ρ1: Env, σᵥ1: BStore, t: Time): KAddr =
-    val EState(e, _, _, _, _, _) = s
     KAddr(List(e1, ρ1, t))
 
 trait AACContAlloc:

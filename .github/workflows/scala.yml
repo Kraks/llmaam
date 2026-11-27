@@ -30,6 +30,7 @@ jobs:
     - name: Run tests
       run: |
         sbt 'testOnly llmaam.aam.TestAAM'
+        sbt 'testOnly llmaam.aam.TestANFAAM'
         sbt 'testOnly llmaam.frontend.scm.TestParser'
-        sbt 'testOnly llmaam.frontend.scm.TestAST2Core'
+        sbt 'testOnly llmaam.frontend.scm.TestANF'
         sbt 'testOnly llmaam.frontend.scm.TestANFBenchmarks'

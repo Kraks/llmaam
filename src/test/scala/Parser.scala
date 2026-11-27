@@ -184,38 +184,9 @@ class TestParser extends FunSuite {
   benchmarks.foreach { path =>
     test(s"parse and pretty-print $path"):
       val ast = SchemeParser.parseFile(path.toString).getOrElse(fail(s"Could not parse $path"))
-      for tree <- List(ast, ast.desugar) do
-        val printed = tree.pretty
-        val reparsed = SchemeParser(printed).getOrElse(fail(s"Could not reparse the output for $path"))
-        assertEquals(reparsed.pretty, printed)
+      val printed = ast.pretty
+      val reparsed = SchemeParser(printed).getOrElse(fail(s"Could not reparse the output for $path"))
+      assertEquals(reparsed.pretty, printed)
   }
 
-}
-
-class TestDesugar extends FunSuite {
-  test("desugar"):
-    assert(IntLit(1).desugar == IntLit(1))
-
-    assert((Begin(List(Define("x", IntLit(2)), SetVar("x", IntLit(3)), Var("x")))).desugar.pretty ==
-      "(begin (define x 2) (set! x 3) x)")
-
-    assert(Cond(List(
-        CondBr(
-          App(Var("positive?"),List(IntLit(-5))),
-          App(Var("error"),List())),
-        CondBr(App(Var("zero?"),List(IntLit(-5))),App(Var("error"),List())),
-        CondBr(App(Var("positive?"),List(IntLit(5))),SSym("here")))).desugar.pretty ==
-        "(if (positive? -5) (error) (if (zero? -5) (error) (if (positive? 5) 'here (void))))")
-
-    assert(Case(IntLit(3), List(
-        CaseBranch(List(IntLit(3), IntLit(4), IntLit(5)), BoolLit(true)),
-        CaseBranch(List(App(Lam(List(), IntLit(7)), List()), IntLit(6)), BoolLit(false)))).desugar.pretty ==
-      "((lambda ($tmp-case) (if (eqv? $tmp-case 3) #t (if (eqv? $tmp-case 4) #t (if (eqv? $tmp-case 5) #t (if (eqv? $tmp-case ((lambda () 7))) #f (if (eqv? $tmp-case 6) #f (void))))))) 3)")
-
-    val Some(ast) = SchemeParser("(define (pow a b) (if (eq? b 0) 1 (* a (pow a (- b 1))))) (pow 3 5)")
-    assert(ast.desugar.pretty ==
-      "(begin (define pow (lambda (a b) (if (eq? b 0) 1 (* a (pow a (- b 1)))))) (pow 3 5))")
-
-    val Some(begin_in_begin) = SchemeParser("(begin (begin a b) c d)")
-    assert(begin_in_begin.desugar.pretty == "(begin (begin a b) c d)")
 }

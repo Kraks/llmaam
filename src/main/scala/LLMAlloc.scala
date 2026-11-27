@@ -1,6 +1,6 @@
 package llmaam.aam
 
-import llmaam.syntax.Expr
+import llmaam.frontend.anf.{Expr, Let, CExpr}
 
 import scala.io.Source
 import scala.collection.mutable.{ListBuffer, HashMap}
@@ -35,14 +35,14 @@ trait LLMAlloc:
 
   def tick(s: State): Time =
     s match
-      case EState(e: Expr.App, _, _, _, _, t) =>
+      case EState(e @ Let(_, _: CExpr.App, _), _, _, _, _, t) =>
         val parsed = queryLLM(prepareTickQuery(s, t))
         assert(parsed("query-type") == "Tick", s"Expected Tick, got ${parsed("query-type")}")
         val k = parsed("k").toInt
         (e :: t).take(k)
       case EState(_, _, _, _, _, t) => t // doesn't tick if not a call
       case VState(_, _, _, _, _, t) => t // value state doesn't tick
-      case ErrState() => ???
+      case ErrState() => Nil
 
   def allocBind(s: State, x: String, t: Time): BAddr =
     val parsed = queryLLM(prepareBindAddrQuery(s, x, t))
@@ -51,7 +51,9 @@ trait LLMAlloc:
     else BAddr(x, List())
 
   def allocKont(s: State, tgt: Expr, tgtEnv: Env, tgtSt: BStore, t: Time): KAddr =
-    val EState(e, ρ, σ, _, _, _) = s
+    val e = s match
+      case EState(expr, _, _, _, _, _) => expr
+      case _ => throw new IllegalArgumentException("Continuation allocation requires an expression state")
     val parsed = queryLLM(prepareKontAddrQuery(s, e, tgt, tgtEnv, tgtSt, t))
     assert(parsed("query-type") == "KAddr", s"Expected KAddr, got ${parsed("type")}")
     val inst: ListBuffer[Option[Any]] = new ListBuffer()

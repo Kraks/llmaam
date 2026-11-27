@@ -9,6 +9,21 @@ using command `compile`, run a main function using `run`, execute all test
 cases using `test`.
 You can also run a specific test given the package path, e.g. `testOnly llmaam.aam.TestAAM`.
 
+The analysis pipeline is Scheme source → parsed AST → ANF → AAM:
+
+```scala
+import llmaam.frontend.scm.SchemeParser
+import llmaam.frontend.anf.toANF
+import llmaam.aam.*
+
+val program = SchemeParser("((lambda (x) (+ x 1)) 2)").get.toANF
+val states = (new Analyzer with ZeroCFA with P4FContAlloc).run(program)
+```
+
+The ANF machine evaluates atomic operands directly and uses `KLet` for pending
+function or conditional results. Its type-based value domain abstracts list contents
+(including rest arguments) as `ListVal`; it does not implement all Scheme primitives.
+
 Currently, the code base supports Google Gemini and OpenAI API.
 You need to put a Google Gemini API key in file `GEMINI_AI_KEY` or
 OpenAI API in file `OPENAI_API_KEY`.
@@ -49,7 +64,7 @@ See the system prompt and conversion with LLM [here](examples/stack2_gemini25_ju
 - [x] support mutable states
 - [x] make use of ErrState (eg. adding a function with a number produce ErrState)
 - [x] a Scheme parser (to handle some [benchmarks](https://github.com/TimWhiting/context-sensitive-demand-cfa/tree/main/evaluation/benchmarks))
-- [ ] Refactor desugaring from Scheme to core syntax
+- [x] Normalize the Scheme AST to ANF before analysis
 - [ ] Deepseek, QWen API support
 - [ ] Give better prompt (eg existing strategy etc) to guide LLM make better decisions
 - [ ] support call/cc
